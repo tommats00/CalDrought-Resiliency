@@ -1,0 +1,25 @@
+---
+title: "main_workflow"
+author: "Tom Gibbens-Matsuyama"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Load libraries
+
+```{r}
+library(tidyverse)
+library(here)
+```
+
+## Load data
+
+```{r}
+water_shortage <- read_csv(here("data", "actual_water_shortage_level.csv"))
+five_year_shortage <- read_csv(here("data", "five_year_water_shortage_outlook.csv"))
+historical_production <- read_csv(here("data", "historical_production_delivery.csv"))
+monthly_water_shortage <- read_csv(here("data", "monthly_water_shortage_outlook.csv"))
+source_name <- read_csv(here("data", "source_name.csv"))
+```
