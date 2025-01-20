@@ -22,4 +22,89 @@ five_year_shortage <- read_csv(here("data", "five_year_water_shortage_outlook.cs
 historical_production <- read_csv(here("data", "historical_production_delivery.csv"))
 monthly_water_shortage <- read_csv(here("data", "monthly_water_shortage_outlook.csv"))
 source_name <- read_csv(here("data", "source_name.csv"))
+metadata <- read_csv(here("data", "metadata.csv"))
+population <- read_csv(here("data", "population_clean.csv"))
 ```
+
+This workflow is designed to explore our data initially. From it, I want to have clear objectives and deliverable for the client. What kind of Questions can we answer from looking at this data? I need to narrow down the scope so that I can have clear deliverable and objectives. 
+
+
+### Meta Data
+Let's first go through every dataframe individually, starting with the meta data. I shouldn't have to write any code. I will just add markdown to keep track of variables that are more than meets the eye. 
+
+1. **Shortage Type** - Dataframe: "monthly_water_shortage", whether or not surplus/shortage has action, such as reduction or augmentation
+2. **Acre Feet** - DataFrame: "monthly_water_shortage", volume of surplus/shortage in acre-feet
+3. **Water shortage stage** - Describes water shortage "stage", I don't think data is available in any dataframes. From metadata you need to take from API
+4. **Shortage greater 10 percent** - TRUE/FALSE logical if it greater than 10 percent, again don't have data available, need to get from API
+5. **PWSID** - Public Water System Identification Number 
+6. **Produced or delivery** - DataFrame: "historical_production": Whether water is produced or delivered 
+7. **Population** - DataFrame: "population_clean", population using drinking water 
+
+## Now let's explore our DataFrames
+
+### Five Year Shortage 
+From the FlowWest GitHub page about the data: This table provides anticipated annual potable water levels (both surplus and shortage) with shortage actions and without shortage actions for five years based on the five driest consecutive years on record. 
+
+Looking at the DataFrame, under column **PWSID**, they can have more than one ID representing the public water system. Is there a way to only have one PWSID per row?
+
+The most important columns/variables in this DataFrame are water_use_acre_feet and water_supplies_acre_feet. Some questions that come up from this dataframe are as follows: 
+
+- Is the projected supply meeting the projected demand? 
+- How many PWSID's are meeting the demand in each city? 
+- Are there specific cities that meed the supply/demand more than other? 
+```{r}
+# Explore five_year_shortage DataFrame
+length(unique(five_year_shortage$supplier_name))
+# There are 439 unique suppliers in DataFrame
+
+# Create new column that is difference between supply and demand
+five_year_shortage$supply_demand_diff <- five_year_shortage$water_supplies_acre_feet - five_year_shortage$water_use_acre_feet
+
+# There are outliers, let's filter them out for an initial histogram plot
+five_year_shortage <- five_year_shortage %>% 
+  filter(supply_demand_diff > -50000 & supply_demand_diff < 50000)
+
+ggplot(five_year_shortage, aes(supply_demand_diff)) +
+  geom_histogram()
+
+# A positive number means there is a surplus of water 
+```
+
+### Historical Production
+
+From the FlowWest GitHub page: This table provides production and delivery data by water system and water type. These data were reported through the Electronic Annual Report (eAR) and published on the California Open Data Portal. The data included in this table represent a subset of the data included in the eAR. Beginning in 2023, the reporting of these data transitioned to the SAFER Clearinghouse. The SWB is working on appending data from 2023 onwards, but this is not currently available. 
+
+This is by far the biggest DataFrame with over 900,000 observations. Variables of interest would be **water_system_name**, **water_produced_or_delivered**, **water_type**, and **quanitity_acre_feet**. This data represents actual values observed. Some questions that come up are the following: 
+- What **water_type** is using the most water? 
+- Is there a **water_system_name**, "place", that is using the most water? 
+- Can we join this with our **population** DataFrame to view where water is being used the most/least? 
+
+### Monthly Water Shortage
+
+From the FlowWest GitHub page: This table provides forecasted monthly (and annual) potable water shortage (or surplus) with and without shortage actions for a dry year. The Annual Water Supply and Demand Assessment (AWSDA) reports this data. All data reported through the AWSDA are available on the DWR’s Water Use Efficiency (WUE) portal. In the most recent AWSDA guidance, see pages 30-35 for information about the data elements in the monthly_water_shortage_outlook table. Methodology guidance is included in this report, though it is not implemented consistently across urban water suppliers.
+
+Variables/columns of interest are **supplier_name**, **supplier_type**, **shortage_surplus_acre_feet**, and **shortage_surplus_percent**. 
+
+### Source Name
+
+From the FlowWest Github page: This table summarizes the facility type, status, and location by public water system and facility. These data are from SDWIS and processed within the SAFER Clearinghouse. These data are assigned through facility permitting process and are not user reported, and often validated through on-the-ground field visits. The data are filtered to include the most recent data; out of date data are not included. Currently, no documentation has been published for these data.
+
+Variables/columns of interest are **source_facility_name**, **source_facility_type**, **water_type** and **lat/long columns**. 
+
+
+### Actual Water Shortage Level
+From the FlowWest GitHub page: This table reports the monthly state standard shortage level by urban retail water suppliers, which are generally defined as agencies serving over 3,000 service connections or deliveries 3,000 acre-feet of water annually for municipal purposes. These data are collected by the State Water Resources Control Board through its monthly Conservation Reporting and the data included in this dataset represent a small component of the larger dataset. Information about these reports can be found on the Water Conservation Portal, which is no longer active, and the full data (which represents the source data for this dataset) are available on the California Open Data Portal. Beginning in 2023, the reporting of these data transitioned to the SAFER Clearinghouse.
+
+Variables/columns of interest are **supplier_name** and **state_standard_shortage_level**. The shortage levels range from 0-5 with 0 being no water shortage. I looked for documentation on how they calculate it, but couldn't find anything definite. 
+
+
+## Questions
+
+#### General 
+- What are the biggest problems with these data? 
+- 
+
+#### Locally
+- Do we want to create a workflow that analyzes water_supply/water_demand between each supplier? Maybe something that takes acutal and projected water use data. 
+
+#### State-Wide
