@@ -1,0 +1,22 @@
+---
+title: "Joining Data"
+author: "Tom Gibbens-Matsuyama"
+format: html
+editor: visual
+---
+
+I am interested in making a map of all the points that we have. The dataset that I am working with is the five_year_shortage one. I need to join it with the source_name dataset because it contains all of the geographic information. Before we join let's explore the similarities and differences between the two. The variable we will join by is org_id, so let's take a look.
+
+```{r}
+source_name_id <- source_name %>% 
+  filter(!longitude > 0)
+
+ggplot(source_name_id, aes(y = latitude, x = longitude)) +
+  geom_point()
+```
+
+```{r}
+
+
+five_source <- left_join(five_year_shortage, source_name_id, by = "org_id")
+```

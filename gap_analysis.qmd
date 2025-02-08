@@ -1,0 +1,10 @@
+---
+title: "Gap Analysis"
+author: "Tom Gibbens-Matsuyama"
+format: html
+editor: visual
+---
+
+### Gap Analysis
+
+DataFrame - Source_name: has longitudinal values outside of California, only a couple not a big deal.
