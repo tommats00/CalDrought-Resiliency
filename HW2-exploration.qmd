@@ -208,6 +208,42 @@ five_red_0 <- five_year_shortage %>%
   filter(benefit_demand_reduction_acre_feet == 0)
 ```
 
+### Alameeda, Goleta, Bakersfield Dumbbell Plot
+
+```{r}
+five_dumbbell <- five_year_shortage %>% 
+  filter(org_id %in% c(1068, 123, 22))
+
+five_dumbbell$supply_use_diff <- five_dumbbell$water_supplies_acre_feet - five_dumbbell$water_use_acre_feet
+
+county_labels <- c("22" = "Alameeda", "123" = "Bakersfield", "1068" = "Goleta")
+
+ggplot(five_dumbbell) +
+  geom_linerange(aes(y = forecast_start_date,
+                     xmin = water_supplies_acre_feet, xmax = water_use_acre_feet,
+                     color = case_when(
+                       water_use_acre_feet > water_supplies_acre_feet ~ "red",
+                       TRUE ~ "gray50"
+                     )))+
+  geom_point(aes(x = water_supplies_acre_feet, y = forecast_start_date),
+                 color = "coral",
+                 size = 2.5 ) +
+  geom_point(aes(x = water_use_acre_feet, y = forecast_start_date),
+                 color = "black",
+                 size = 2.5 ) +
+  facet_wrap(~org_id, nrow = 3, scales = "free_y",
+             labeller = labeller(org_id = county_labels)) +
+  scale_color_manual(values = c("red" = "red", "gray50" = "gray50")) +
+  labs(x = "Water Supply and Use (Acre-Feet)",
+       y = "Year",
+       title = "Projected Water Shortage and Surplus for 2021 - 2025") +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    strip.text = element_text(size = 16)
+  )
+```
+
 ### Historical Production
 
 From the FlowWest GitHub page: This table provides production and delivery data by water system and water type. These data were reported through the Electronic Annual Report (eAR) and published on the California Open Data Portal. The data included in this table represent a subset of the data included in the eAR. Beginning in 2023, the reporting of these data transitioned to the SAFER Clearinghouse. The SWB is working on appending data from 2023 onwards, but this is not currently available.
