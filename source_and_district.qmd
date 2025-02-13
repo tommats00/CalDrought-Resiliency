@@ -1,0 +1,158 @@
+---
+title: "Source and Water District Data"
+author: "Tom Gibbens-Matsuyama"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Load libraries
+
+```{r}
+library(janitor)
+library(sf)
+library(tmap)
+library(spnaf)
+library(tidyverse)
+library(here)
+```
+
+
+
+## Load in outside data, shapefiles and csv
+
+```{r}
+district_boundaries <- read_csv(here("data", "California_Drinking_Water_System_Area_Boundaries.csv")) %>% 
+  clean_names()
+
+district_shape <- read_sf(here("data", "cal_drinking", "California_Drinking_Water_System_Area_Boundaries.shp")) %>% 
+  clean_names()
+
+district_json <- read_sf("data", "California_Drinking_Water_System_Area_Boundaries", "California_Drinking_Water_System_Area_Boundaries.geojson")
+```
+
+
+```{r}
+### VIEWING DUPLICATES
+
+length(unique(district_boundaries$sabl_pwsid))
+
+duplicates <- district_boundaries %>%
+  group_by(sabl_pwsid) %>%
+  filter(n() > 1) %>%
+  ungroup()
+```
+
+## Let's Explore the Source Data
+
+```{r}
+# View NAs in our Lat/Long 
+source_name %>% 
+  filter(is.na(latitude)) %>% 
+  count()
+
+# View NAs in ORG_ID
+source_name %>% 
+  filter(is.na(org_id)) %>% 
+  count()
+
+# View NAs in PWSID
+source_name %>% 
+  filter(is.na(pwsid)) %>% 
+  count()
+
+# Filter out coordinate NAs
+source_geo <- source_name %>% 
+  filter(!is.na(latitude)) %>% 
+  filter(!is.na(org_id))
+```
+
+### Convert Units and Plot Initial Coords for each Source
+```{r}
+# Convert our coordinates into spatial data for tmap
+source_geo <- st_as_sf(source_geo, coords = c("longitude", "latitude"), crs = "EPSG:4269")
+
+# Change CRS of district_shape data
+district_shape <- st_transform(district_shape, crs = "EPSG:4269")
+
+# Check data for NA
+summary(source_geo)
+
+
+# Initialize plot of California w/ Points
+
+tmap_mode("view")
+
+
+tm_shape(CA_polygon) +
+  tm_borders() +
+tm_shape(district_shape) +
+  tm_borders(col = "forestgreen") +
+tm_shape(source_geo) +
+  tm_dots(col = "coral")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Let's think, I want to create a polygon using the Org_IDs that have 3 or more sources
+```{r}
+source_geo_poly <- source_geo %>% 
+  group_by(org_id) %>% 
+  summarise(geometry = st_convex_hull(geometry), .groups = "drop")
+
+
+tm_shape(CA_polygon) +
+  tm_borders() +
+  tm_shape(source_geo_poly) +
+  tm_polygons() +
+  tm_fill(col = "red", fill_alpha = 0.5)
+```
+
+
+
+
+
+
+```{r}
+library(sf)
+
+# Create a simple dataframe with known points
+data <- data.frame(
+  org_id = c(1, 1, 1, 2, 2, 3),
+  latitude = c(34.0522, 34.0700, 34.0800, 36.1699, 36.1800, 37.7749),
+  longitude = c(-118.2437, -118.2500, -118.2550, -115.1398, -115.1500, -122.4194)
+)
+
+# Convert to an 'sf' object
+data_sf <- st_as_sf(data, coords = c("longitude", "latitude"), crs = 4326)
+
+# Group by 'org_id' and calculate convex hull for each group
+convex_hull_sf <- data_sf %>%
+  group_by(org_id) %>%
+  summarise(geometry = st_convex_hull(geometry), .groups = "drop")
+
+# Check the geometry type (should be POLYGON or MULTIPOLYGON)
+st_geometry_type(convex_hull_sf)  # Should return POLYGON
+
+# Plot the result
+library(tmap)
+tm_shape(convex_hull_sf) +
+  tm_borders() +
+  tm_fill(col = "lightblue")
+
+```
+
