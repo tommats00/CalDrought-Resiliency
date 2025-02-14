@@ -7,4 +7,24 @@ editor: visual
 
 ### Gap Analysis
 
-DataFrame - Source_name: has longitudinal values outside of California, only a couple not a big deal.
+### California Natural Resources Agency Website
+
+-   
+
+### Source Name
+
+-   Has longitudinal values outside of California, only a few hundred not a big deal.
+
+-   Contains over 9000 NAs in PWSID and ORG_ID columns, hard to connect source of water to its water agency
+
+-   Latitude and Longitude doesn't contain a CRS
+
+-   Problem with JOINing: Multiple sources for each ORG_ID which is how we will join the data with each water agency. Other dataframes have aggregated data for each ORG_ID per month, year, etc.
+
+### Five year shortage
+
+-   Columns: supply_augmentation and use_reduction have a lot of NAs, making it hard to interpret if actions were taken when shortage occurred.
+
+-   This data is not truly "projected", it is data from the past with on average, 5 worst consecutive drought years.
+
+-   

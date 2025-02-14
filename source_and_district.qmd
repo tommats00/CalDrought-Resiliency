@@ -18,20 +18,17 @@ library(tidyverse)
 library(here)
 ```
 
-
-
 ## Load in outside data, shapefiles and csv
 
 ```{r}
-district_boundaries <- read_csv(here("data", "California_Drinking_Water_System_Area_Boundaries.csv")) %>% 
-  clean_names()
+# district_boundaries <- read_csv(here("data", "California_Drinking_Water_System_Area_Boundaries.csv")) %>% 
+#   clean_names()
 
 district_shape <- read_sf(here("data", "cal_drinking", "California_Drinking_Water_System_Area_Boundaries.shp")) %>% 
   clean_names()
 
-district_json <- read_sf("data", "California_Drinking_Water_System_Area_Boundaries", "California_Drinking_Water_System_Area_Boundaries.geojson")
+# district_json <- read_sf("data", "California_Drinking_Water_System_Area_Boundaries", "California_Drinking_Water_System_Area_Boundaries.geojson")
 ```
-
 
 ```{r}
 ### VIEWING DUPLICATES
@@ -69,6 +66,7 @@ source_geo <- source_name %>%
 ```
 
 ### Convert Units and Plot Initial Coords for each Source
+
 ```{r}
 # Convert our coordinates into spatial data for tmap
 source_geo <- st_as_sf(source_geo, coords = c("longitude", "latitude"), crs = "EPSG:4269")
@@ -93,22 +91,8 @@ tm_shape(source_geo) +
   tm_dots(col = "coral")
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ### Let's think, I want to create a polygon using the Org_IDs that have 3 or more sources
+
 ```{r}
 source_geo_poly <- source_geo %>% 
   group_by(org_id) %>% 
@@ -121,11 +105,6 @@ tm_shape(CA_polygon) +
   tm_polygons() +
   tm_fill(col = "red", fill_alpha = 0.5)
 ```
-
-
-
-
-
 
 ```{r}
 library(sf)
@@ -156,3 +135,10 @@ tm_shape(convex_hull_sf) +
 
 ```
 
+### Are there overlapping of org_id with pwsid
+
+```{r}
+source_name %>% 
+  group_by(pwsid) %>% 
+  summarise(org_id = sum(org_id))
+```

@@ -76,7 +76,36 @@ ggplot(five_year_shortage, aes(supply_demand_diff)) +
 
 From the FlowWest GitHub page: This table provides production and delivery data by water system and water type. These data were reported through the Electronic Annual Report (eAR) and published on the California Open Data Portal. The data included in this table represent a subset of the data included in the eAR. Beginning in 2023, the reporting of these data transitioned to the SAFER Clearinghouse. The SWB is working on appending data from 2023 onwards, but this is not currently available.
 
-This is by far the biggest DataFrame with over 900,000 observations. Variables of interest would be **water_system_name**, **water_produced_or_delivered**, **water_type**, and **quanitity_acre_feet**. This data represents actual values observed. Some questions that come up are the following: - What **water_type** is using the most water? - Is there a **water_system_name**, "place", that is using the most water? - Can we join this with our **population** DataFrame to view where water is being used the most/least?
+This is by far the biggest DataFrame with over 900,000 observations. Variables of interest would be **water_system_name**, **water_produced_or_delivered**, **water_type**, and **quanitity_acre_feet**. This data represents actual values observed. Some questions that come up are the following: - What **water_type** is using the most water? - Is there a **water_system_name**, "place", that is using the most water? - Can we join this with our **population** DataFrame to view where water is being used the most/least?\
+
+```{r}
+# Look at water produced vs delivered
+org_13 <- historical_production %>% 
+  filter(org_id == 13) %>% 
+  group_by(water_produced_or_delivered) %>% 
+  summarise(acre_feet = sum(quantity_acre_feet, na.rm = TRUE))
+
+
+# View how many NAs in acre_feet column
+historical_production %>% 
+  group_by(water_produced_or_delivered) %>% 
+  filter(is.na(quantity_acre_feet)) %>% 
+  count()
+
+length(unique(source_name$pwsid)) 
+length(unique(source_name$org_id))
+
+distinct <- source_name %>% 
+  group_by(pwsid) %>% 
+  summarise(distinct_org = n_distinct(org_id, na.rm = TRUE)) %>% 
+  filter(distinct_org > 1) 
+
+
+df %>%
+  group_by(pwsid) %>%
+  summarise(distinct_org_ids = n_distinct(org_id)) %>%
+  filter(distinct_org_ids > 1)
+```
 
 ### Monthly Water Shortage
 
