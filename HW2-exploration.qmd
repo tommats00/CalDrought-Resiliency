@@ -244,6 +244,51 @@ ggplot(five_dumbbell) +
   )
 ```
 
+### Alameeda, Bakersfield, Goleta Bar Plot
+
+```{r}
+county_labels <- c("22" = "Alameeda", "123" = "Bakersfield", "1068" = "Goleta")
+
+ggplot(five_dumbbell, aes(x = forecast_start_date, y = supply_use_diff,
+                          fill = case_when(
+                            supply_use_diff > 0 ~ "lightblue",
+                            supply_use_diff < 0 ~ "firebrick"
+                          ),
+                          color = "black")) +
+  geom_col() +
+  facet_wrap(~org_id,
+             labeller = labeller(org_id = county_labels)) +
+  scale_fill_manual(values = c("lightblue" = "lightblue", 
+                                "firebrick" = "firebrick")) +
+  scale_color_manual(values = c("black" = "black")) +
+  scale_y_continuous(limits = c(-20000, 40000),
+                     breaks = seq(-20000, 40000, by = 10000)) +
+  labs(x = "Forecast Year",
+       y = "Water Shortage or Surplus (Acre-feet)",
+       title = "Projected Water Shortage and Surplus for 2021 - 2025") +
+  theme_minimal()+
+  theme(
+    legend.position = "none"
+  )
+```
+
+### Over the 5 years, shortage vs surplus bar plot
+
+```{r}
+# Want to produce a bar plot of shortage vs surplus over the 5 years
+
+five_year_avg <- five_year_shortage %>% 
+  group_by(forecast_start_date) %>% 
+  summarize(Surplus = sum(supply_demand_diff > 0),
+            Shorage = sum(supply_demand_diff < 0),
+            Zero = sum(supply_demand_diff = 0))
+
+
+five_year_avg <- five_year_shortage %>% 
+  group_by(forecast_start_date) %>% 
+  summarize(average = mean(supply_demand_diff, na.rm = TRUE))
+```
+
 ### Historical Production
 
 From the FlowWest GitHub page: This table provides production and delivery data by water system and water type. These data were reported through the Electronic Annual Report (eAR) and published on the California Open Data Portal. The data included in this table represent a subset of the data included in the eAR. Beginning in 2023, the reporting of these data transitioned to the SAFER Clearinghouse. The SWB is working on appending data from 2023 onwards, but this is not currently available.
