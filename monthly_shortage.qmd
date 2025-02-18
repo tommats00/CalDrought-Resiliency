@@ -1,0 +1,39 @@
+---
+title: "Monthly Water Shortage"
+author: "Tom Gibbens-Matsuyama"
+format: html
+editor: visual
+---
+
+### Monthly Water Shortage
+
+Making a bar plot from the monthly water shortage dataframe. 
+
+```{r}
+monthly_shortage_alameeda <- monthly_water_shortage %>% 
+  filter(org_id == 23)
+
+ggplot(monthly_shortage_alameeda, aes(x = forecast_start_date, y = shortage_surplus_percent)) +
+  geom_col(fill = "lightblue", color = "black") +
+  labs(x = "Forecast Start Date",
+       y = "Shortage and Surplus Percentage",
+       title = "Forecasted shortage and surplus for") +
+  theme_minimal()
+```
+### Making a function now
+
+```{r}
+monthly_shortage_fun <- function(id){
+  monthly_water_shortage %>% 
+    filter(org_id == id) %>% 
+    ggplot(aes(x = forecast_start_date, y = shortage_surplus_percent)) +
+    geom_col(fill = "lightblue", color = "black") +
+    labs(x = "Forecast Start Date",
+       y = "Shortage and Surplus Percentage",
+       title = "Forecasted shortage and surplus for") +
+  theme_minimal()
+}
+
+monthly_shortage_fun(57)
+```
+
