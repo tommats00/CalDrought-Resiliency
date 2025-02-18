@@ -10,9 +10,36 @@ editor: visual
 Making a bar plot from the monthly water shortage dataframe. 
 
 ```{r}
+# filter to Alameeda Org_id for the example 
 monthly_shortage_alameeda <- monthly_water_shortage %>% 
-  filter(org_id == 23)
+  filter(org_id == 23) %>% 
+  
+  # Drop NAs in forecast month b/c they represent year projections
+  filter(!is.na(forecast_month)) %>% 
+  
+  # Create year column from forecast start date
+  mutate(year_start = year(forecast_start_date),
+         year_end = year(forecast_end_date))
 
+
+
+
+
+# Ggplot of month column 
+ggplot(monthly_shortage_alameeda, aes(x = forecast_month, y = shortage_surplus_percent)) +
+  geom_col(fill = 'lightblue', color = "black") +
+  # facet_wrap(~year_start) + 
+  labs(x = "Forecast Start Date",
+       y = "Shortage and Surplus Percentage",
+       title = "Forecasted shortage and surplus for") +
+  theme_minimal()
+
+
+
+
+
+
+# Create ggplot 
 ggplot(monthly_shortage_alameeda, aes(x = forecast_start_date, y = shortage_surplus_percent)) +
   geom_col(fill = "lightblue", color = "black") +
   labs(x = "Forecast Start Date",
