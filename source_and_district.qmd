@@ -27,13 +27,13 @@ library(here)
 district_shape <- read_sf(here("data", "cal_drinking", "California_Drinking_Water_System_Area_Boundaries.shp")) %>% 
   clean_names()
 
-<<<<<<< Updated upstream
+
 # district_json <- read_sf("data", "California_Drinking_Water_System_Area_Boundaries", "California_Drinking_Water_System_Area_Boundaries.geojson")
-=======
+
 district_json <- read_sf("data", "California_Drinking_Water_System_Area_Boundaries", "California_Drinking_Water_System_Area_Boundaries.geojson")
 
 source_name <- read_csv(here("data", "source_name.csv"))
->>>>>>> Stashed changes
+
 ```
 
 ```{r}
@@ -105,7 +105,7 @@ tm_shape(source_geo) +
 
 
 
->>>>>>> Stashed changes
+
 ### Let's think, I want to create a polygon using the Org_IDs that have 3 or more sources
 
 ```{r}
@@ -121,7 +121,7 @@ tm_shape(source_geo) +
 #   tm_fill(col = "red", fill_alpha = 0.5)
 ```
 
-<<<<<<< Updated upstream
+
 ```{r}
 library(sf)
 
@@ -158,9 +158,4 @@ source_name %>%
   group_by(pwsid) %>% 
   summarise(org_id = sum(org_id))
 ```
-=======
 
-
-
-
->>>>>>> Stashed changes
