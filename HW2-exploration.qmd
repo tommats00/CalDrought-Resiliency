@@ -362,6 +362,15 @@ hist_produce <- historical_production %>%
 
 ```
 
+### Water type uniques
+
+```{r}
+water_type <- historical_production %>% 
+  filter(water_produced_or_delivered == "water produced") 
+
+unique(water_type$water_type)
+```
+
 ### Monthly Water Shortage
 
 From the FlowWest GitHub page: This table provides forecasted monthly (and annual) potable water shortage (or surplus) with and without shortage actions for a dry year. The Annual Water Supply and Demand Assessment (AWSDA) reports this data. All data reported through the AWSDA are available on the DWR's Water Use Efficiency (WUE) portal. In the most recent AWSDA guidance, see pages 30-35 for information about the data elements in the monthly_water_shortage_outlook table. Methodology guidance is included in this report, though it is not implemented consistently across urban water suppliers.
