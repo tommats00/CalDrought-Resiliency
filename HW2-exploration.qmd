@@ -247,7 +247,7 @@ ggplot(five_dumbbell) +
 ### Alameeda, Bakersfield, Goleta Bar Plot
 
 ```{r}
-county_labels <- c("22" = "Alameeda", "123" = "Bakersfield", "1068" = "Goleta")
+county_labels <- c("22" = "Alameda", "123" = "Bakersfield", "1068" = "Goleta")
 
 five_bar <- ggplot(five_dumbbell, aes(x = forecast_start_date, y = supply_use_diff,
                           fill = case_when(
@@ -261,12 +261,12 @@ five_bar <- ggplot(five_dumbbell, aes(x = forecast_start_date, y = supply_use_di
   scale_fill_manual(values = c("lightblue" = "lightblue", 
                                 "firebrick" = "firebrick")) +
   scale_color_manual(values = c("black" = "black")) +
-  scale_y_continuous(limits = c(-20000, 40000),
-                     breaks = seq(-20000, 40000, by = 10000)) +
+  scale_y_continuous(limits = c(-10000, 40000),
+                     breaks = seq(-10000, 40000, by = 10000)) +
   labs(x = "Forecast Year",
-       y = "Water Shortage or Surplus (Acre-feet)",
-       title = "Projected Water Shortage and Surplus for 2021 - 2025",
-       subtitle = "Projections for randomly selected water agencies in California") +
+       y = "Water (Acre-feet)",
+       title = "Projected Water Shortage and Surplus for 2021 - 2025") +
+       #subtitle = "Projections for randomly selected water agencies in California") +
   theme_minimal(base_size = 7)+
   theme(
     legend.position = "none",
@@ -360,6 +360,15 @@ hist_produce <- historical_production %>%
   geom_line()
   
 
+```
+
+### Water type uniques
+
+```{r}
+water_type <- historical_production %>% 
+  filter(water_produced_or_delivered == "water produced") 
+
+unique(water_type$water_type)
 ```
 
 ### Monthly Water Shortage
