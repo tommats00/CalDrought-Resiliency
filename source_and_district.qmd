@@ -97,15 +97,6 @@ tm_shape(source_geo) +
   tm_dots(col = "coral")
 ```
 
-<<<<<<< Updated upstream
-=======
-
-
-
-
-
-
-
 ### Let's think, I want to create a polygon using the Org_IDs that have 3 or more sources
 
 ```{r}
@@ -120,7 +111,6 @@ tm_shape(source_geo) +
 #   tm_polygons() +
 #   tm_fill(col = "red", fill_alpha = 0.5)
 ```
-
 
 ```{r}
 library(sf)
@@ -158,4 +148,3 @@ source_name %>%
   group_by(pwsid) %>% 
   summarise(org_id = sum(org_id))
 ```
-

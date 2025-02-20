@@ -7,7 +7,7 @@ editor: visual
 
 ### Monthly Water Shortage
 
-Making a bar plot from the monthly water shortage dataframe. 
+Making a bar plot from the monthly water shortage dataframe.
 
 ```{r}
 # filter to Alameeda Org_id for the example 
@@ -47,6 +47,7 @@ ggplot(monthly_shortage_alameeda, aes(x = forecast_start_date, y = shortage_surp
        title = "Forecasted shortage and surplus for") +
   theme_minimal()
 ```
+
 ### Making a function now
 
 ```{r}
@@ -63,4 +64,3 @@ monthly_shortage_fun <- function(id){
 
 monthly_shortage_fun(57)
 ```
-
