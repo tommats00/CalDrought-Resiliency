@@ -1,0 +1,25 @@
+---
+title: "Five Year Gap"
+author: "Tom Gibbens-Matsuyama"
+format: html
+editor: visual
+---
+
+
+## Load libraries
+
+
+```{r}
+library(tidyverse)
+library(here)
+```
+
+
+
+## Load data
+
+
+```{r}
+five_year_shortage <- read_csv(here("data", "five_year_water_shortage_outlook.csv"))
+```
+

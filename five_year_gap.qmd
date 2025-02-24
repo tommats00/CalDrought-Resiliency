@@ -1,0 +1,145 @@
+---
+title: "Five Year Gap"
+author: "Tom Gibbens-Matsuyama"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Load libraries
+
+```{r}
+library(tidyverse)
+library(here)
+library(testthat)
+library(gtsummary)
+library(gtExtras)
+```
+
+
+## Load data
+
+```{r}
+five_year_shortage <- read_csv(here("data", "five_year_water_shortage_outlook.csv"))
+```
+
+### Dataset description
+This data provides potable water levels (surplus and shortage) with and without shortage actions. It should be noted that this data is self reported by each water agency through the Urban Water Management Plan report. This self reported data projects the average five driest consecutive years on record, meaning this is the worst case drought projections recorded by each water agency. 
+### Chat GPT Description
+This data presents potable water levels, including both surplus and shortage conditions, with and without the implementation of shortage mitigation actions. It is important to note that this data is self-reported by each water agency through their Urban Water Management Plan submissions. The reported figures reflect projections based on the average of the five driest consecutive years on record, representing the most severe drought scenarios documented by each water agency.
+
+
+```{r}
+# View how many org_ids there are
+length(unique(five_year_shortage$org_id))
+
+# View how many PWSID (water systems ORG IDs use) 
+length(unique(five_year_shortage$pwsid))
+
+# View supplier name, should have same length as ORG ID 
+length(unique(five_year_shortage$supplier_name))
+
+# View UWMP, should only be a value of 1
+length(unique(five_year_shortage$uwmp_year))
+
+# Range should be from Jan 2021 to Dec 2025
+range(unique(five_year_shortage$forecast_start_date))
+
+range(unique(five_year_shortage$forecast_end_date))
+```
+
+### Checking NAs for all columns
+
+```{r}
+# Total all NAs for each column
+na_counts <- sapply(five_year_shortage, function(x) sum(is.na(x)))
+
+# Create a df containing NAs
+na_counts_df <- data.frame(
+  Column = names(na_counts),
+  NAs = na_counts
+)
+
+# Create table from df
+na_counts_df %>% 
+  gt() %>% 
+  tab_header(
+    title = "Total Amount of NAs for each column"
+  ) 
+
+# %>% 
+#   cols_label(
+#     org_id = "Org ID",
+#     pwsid = "PWSID",
+#     is_multiple_pwsid = "Multiple PWSID",
+#     supplier_name = "Suppler Name",
+#     uwmp_year = "UWMP Year",
+#     forecast_start_date = "Forecast Start Date",
+#     forecast_end_date = "Forecast End Date",
+#     water_use_acre_feet = "Water use (Acre-Feet)",
+#     water_supplies_acre_feet = "Water Supply (Acre-Feet)",
+#     benefit_supply_augmenatation_acre_feet = "Supply Augmentation (Acre-Feet)",
+#     benefit_demand_reduction_acre_feet = "Demand Reduction (Acre-Feet)"
+#   )
+```
+
+## Checking validity of columns
+
+### Supply Augmentation and Demand Reduction Columns
+The first thing I notice when looking at NA counts for each column is that supply augmentation and demand reduction have a huge amount of NAs present. One thing I am interested in is if these NAs are overlapping for each row, or if they are just dispersed evenly. 
+
+```{r}
+# Check where NAs overlap from both columns
+overlap_na <- is.na(five_year_shortage$benefit_demand_reduction_acre_feet) & is.na(five_year_shortage$benefit_supply_augmentation_acre_feet)
+
+# Check where either column has NA values
+union_na <- is.na(five_year_shortage$benefit_demand_reduction_acre_feet) | is.na(five_year_shortage$benefit_supply_augmentation_acre_feet)
+
+# Check where neither column has NA values
+no_na <- !is.na(five_year_shortage$benefit_demand_reduction_acre_feet) & !is.na(five_year_shortage$benefit_supply_augmentation_acre_feet)
+
+# Calculate percentages
+overlap_percent <- mean(overlap_na) * 100
+union_percent <- mean(union_na) * 100
+no_na_percent <- mean(no_na) * 100
+
+# Print results
+cat("Overlap of NAs (both columns):", round(overlap_percent, 2), "%\n")
+cat("Union of NAs (at least one column):", round(union_percent, 2), "%\n")
+cat("No NAs in either column:", round(no_na_percent, 2), "%\n")
+
+# Test union and no NAs equal 100 percent
+test_that("Check validity of NAs", {
+  
+  # Test that percent sum of at least and no columns containing NAs = 100%
+  expect_true((union_percent + no_na_percent) == 100)
+})
+
+```
+
+### Interested in if the number of NAs for Water use are from the same water supply rows
+
+```{r}
+# 
+use_supply_overlap <- is.na(five_year_shortage$water_supplies_acre_feet) & is.na(five_year_shortage$water_use_acre_feet)
+
+use_supply_percent <- mean(use_supply_overlap) * 100 
+
+cat("Overlap of NAs in Supply and Use columns:", round(use_supply_percent, 2), "%\n")
+```
+
+The rows containing NAs for either use or supply are not useful for us. As these are the main metrics of this dataframe, missing data from one of the columns makes the row useless. Let's filter out these rows and check to make sure they are gone
+
+```{r}
+five_year_shortage <- five_year_shortage %>% 
+  filter(!is.na(five_year_shortage$water_use_acre_feet),
+         !is.na(five_year_shortage$water_supplies_acre_feet))
+
+
+test_that("NAs are filtered out from the dataframe", {
+    expect_true(sum(is.na(five_year_shortage$water_use_acre_feet)) == 0 & 
+                  sum(is.na(five_year_shortage$water_supplies_acre_feet)) == 0)
+  })
+```
+
