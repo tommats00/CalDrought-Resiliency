@@ -62,7 +62,7 @@ five_year_goleta %>%
 five_year_goleta %>% 
   group_by(use_supply_aug_red) %>% 
   summarize(total_value = sum(acre_feet))
-109```
+```
 
 
 
