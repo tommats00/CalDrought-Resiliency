@@ -1,0 +1,231 @@
+---
+title: "Dashboard Visualizations"
+author: "Tom Gibbens-Matsuyama"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+### Load Libraries
+```{r}
+library(tidyverse)
+library(here)
+library(ggExtra)
+```
+
+### Load data
+```{r}
+# Metric data
+water_shortage <- read_csv(here("data", "actual_water_shortage_level.csv"))
+five_year_shortage <- read_csv(here("data", "five_year_water_shortage_outlook.csv"))
+historical_production <- read_csv(here("data", "historical_production_delivery.csv"))
+monthly_water_shortage <- read_csv(here("data", "monthly_water_shortage_outlook.csv"))
+source_name <- read_csv(here("data", "source_name.csv"))
+population <- read_csv(here("data", "population_clean.csv"))
+```
+
+
+## Five year shortage dataframe
+
+#### Filter to Goleta Water District
+All of the visualizations will be for the Goleta water district (org_id = 1068)
+
+```{r}
+five_year_goleta <- five_year_shortage %>% 
+  filter(org_id == 1068) %>% 
+  pivot_longer(cols = c(starts_with("water"), starts_with("benefit")),
+               names_to = "use_supply_aug_red",
+               values_to = "acre_feet")
+```
+
+#### Bar chart
+```{r}
+ggplot(five_year_goleta, aes(x = forecast_start_date, y = acre_feet, fill = use_supply_aug_red)) +
+  geom_col(position = "dodge")
+```
+
+#### NA values
+
+```{r}
+# Calculate NAs for the dashboard
+five_year_goleta %>% 
+  group_by(use_supply_aug_red) %>% 
+  summarize(total_obs = n(),
+            total_na = sum(is.na(acre_feet)),
+            na_percentage = total_na / total_obs * 100)
+```
+
+#### Total Values
+```{r}
+# Calculate total values for dashboard
+five_year_goleta %>% 
+  group_by(use_supply_aug_red) %>% 
+  summarize(total_value = sum(acre_feet))
+109```
+
+
+
+
+
+
+## Historical Production
+
+### Filter to Goleta Water District (org_id = 1068)
+```{r}
+hist_goleta <- historical_production %>% 
+  filter(org_id == 1068) 
+  
+hist_goleta <- hist_goleta %>%   
+  group_by(start_date) %>% 
+  bind_rows(
+    hist_goleta %>% 
+      group_by(start_date, water_produced_or_delivered) %>% 
+      summarize(water_type = "total",
+                quantity_acre_feet = sum(quantity_acre_feet, na.rm = TRUE),
+                start_date = unique(start_date),
+                end_date = unique(end_date),
+                pwsid = unique(pwsid),
+                water_system_name = unique(water_system_name),
+                org_id = unique(org_id))
+  ) %>% 
+  ungroup()
+```
+
+### Line plot time series for total 
+
+```{r}
+hist_goleta %>% 
+  filter(water_type == "total") %>% 
+
+ggplot(aes(x = start_date, y = quantity_acre_feet, color = water_produced_or_delivered)) +
+  geom_line()
+```
+
+### Line plot time series for specific water type
+PROBLEM: ITS FILTERED BY WATER_TYPE, ON GRAPH IT WILL COLOR BY WATER_TYPE WE DON'T KNOW SPECIFICALLY IF ITS DELIVERED OR PRODUCED, CAN PROBABLY COME TO THAT CONCLUSION BY OURSELVES BUT MIGHT WANT TO INCORPORATE SOMEHOW
+
+```{r}
+hist_goleta %>% 
+  filter(water_type %in% c("agriculture", "commercial/institutional", "groundwater wells", "other")) %>% 
+  
+  ggplot(aes(x = start_date, y = quantity_acre_feet, color = water_type, linetype = water_produced_or_delivered)) +
+  geom_line()
+```
+
+
+### NA values for all produced/delivered NEED TO TAKE OUT 'TOTAL' FOR CALCULATION B/C IT WAS ADDED TO DF
+
+```{r}
+hist_goleta_na <- hist_goleta %>% 
+  group_by(water_produced_or_delivered) %>% 
+  summarize(total_obs = n(),
+            total_na = sum(is.na(quantity_acre_feet)),
+            na_percentage = total_na / total_obs * 100)
+```
+
+
+### Total values for all produced/delivered
+
+```{r}
+hist_goleta_values <- hist_goleta %>% 
+  filter(water_type != "total") %>% 
+  group_by(water_produced_or_delivered) %>% 
+  summarize(total_value = sum(quantity_acre_feet, na.rm = TRUE))
+```
+
+### Total Values for Specific water type
+THIS GIVES ME THE TOTAL VALUES FOR EACH WATER TYPE FOR EVERY YEAR. THE GOAL IS WHEN WE CHANGE THE DATE RANGE, THESE VALUES WILL CHANGE WITH IT
+```{r}
+hist_goleta_values2 <- hist_goleta %>% 
+  #filter(water_type != "total") %>% 
+  group_by(water_produced_or_delivered, water_type) %>% 
+  summarize(total_value = sum(quantity_acre_feet, na.rm = TRUE)) %>% 
+  filter(water_type %in% c("agriculture", "commercial/institutional", "groundwater wells", "other"))
+```
+
+
+
+
+
+## Monthly Water Shortage DF
+
+#### Filter to Alameda, WE DON'T HAVE GOLETA WATER DISTRICT IN THIS DATASET
+```{r}
+monthly_alameda <- monthly_water_shortage %>% 
+  filter(org_id == 23)
+```
+
+### Bar plot for shortage percentage
+
+```{r}
+monthly_alameda %>% 
+  filter(is_annual == "FALSE") %>%
+    pivot_longer(cols = c(shortage_surplus_acre_feet, starts_with("benefit")),
+               names_to = "use_supply_aug_red",
+               values_to = "acre_feet") %>% 
+
+ggplot(aes(x = forecast_start_date, y = acre_feet, fill = use_supply_aug_red)) + 
+  geom_col(position = "dodge")
+```
+
+### Total NA values for Short/Sur, Reduction, Supply Aug
+
+```{r}
+# Calculate alameda NAs for dashboard 
+monthly_alameda_na <- monthly_alameda %>% 
+  pivot_longer(cols = c(shortage_surplus_acre_feet, starts_with("benefit")),
+               names_to = "use_supply_aug_red",
+               values_to = "acre_feet") %>% 
+  group_by(use_supply_aug_red) %>% 
+  summarize(total_obs = n(),
+            total_na = sum(is.na(acre_feet)),
+            na_percentage = total_na / total_obs * 100)
+```
+
+### Total values for Short/sur, reduction, supply aug
+
+```{r}
+monthly_alameda_values <- monthly_alameda %>% 
+  pivot_longer(cols = c(shortage_surplus_acre_feet, starts_with("benefit")),
+               names_to = "use_supply_aug_red",
+               values_to = "acre_feet") %>% 
+  group_by(use_supply_aug_red) %>% 
+  summarize(total = sum(acre_feet, na.rm = TRUE))
+
+```
+
+
+
+
+## Actual Water Shortage Level DF
+
+#### Filter to Goleta
+```{r}
+shortage_goleta <- water_shortage %>% 
+  filter(org_id == 1068)
+```
+
+#### Bar Plot of shortage
+
+```{r}
+ggplot(shortage_goleta, aes(x = start_date, y = state_standard_shortage_level)) +
+  geom_col()
+```
+
+### NAs for shortage
+
+```{r}
+shortage_goleta_na <- shortage_goleta %>% 
+  summarize(total_obs = n(),
+            total_na = sum(is.na(state_standard_shortage_level)),
+            na_percentage = total_na / total_obs * 100)
+```
+
+### Average Values for shortage
+
+```{r}
+shortage_goleta_values <- shortage_goleta %>% 
+  summarize(average = mean(state_standard_shortage_level, na.rm = TRUE))
+```
+
