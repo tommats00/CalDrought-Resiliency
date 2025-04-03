@@ -4,7 +4,7 @@ author: "Tom Gibbens-Matsuyama"
 format: html
 editor: visual
 editor_options: 
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 ### Load Libraries
@@ -37,12 +37,26 @@ five_year_goleta <- five_year_shortage %>%
   pivot_longer(cols = c(starts_with("water"), starts_with("benefit")),
                names_to = "use_supply_aug_red",
                values_to = "acre_feet")
+
+five_year_goleta$use_supply_aug_red <- factor(five_year_goleta$use_supply_aug_red,
+                                              levels = c("water_supplies_acre_feet",
+                                                         "water_use_acre_feet",
+                                                         "benefit_supply_augmentation_acre_feet",
+                                                         "benefit_demand_reduction_acre_feet"),
+                                              labels = c("Supply", "Use", 
+                                                         "Supply Augmentation", "Demand Reduction"))
 ```
 
 #### Bar chart
 ```{r}
 ggplot(five_year_goleta, aes(x = forecast_start_date, y = acre_feet, fill = use_supply_aug_red)) +
-  geom_col(position = "dodge")
+  geom_col(position = "dodge") +
+  labs(x = "Forecast Date",
+       y = "Acre-Feet",
+       fill = element_blank()) +
+  #scale_fill_discrete(labels = c("Supply", "Use", "Supply Augmentation", "Demand Reduction")) +
+  scale_fill_manual(values = c("coral", "steelblue", "forestgreen", "violetred")) + 
+  theme_minimal()
 ```
 
 #### NA values
@@ -90,6 +104,18 @@ hist_goleta <- hist_goleta %>%
                 org_id = unique(org_id))
   ) %>% 
   ungroup()
+
+
+hist_example <- hist_goleta %>% 
+      group_by(start_date, water_produced_or_delivered, water_type) %>% 
+      summarize(water_type = "total",
+                quantity_acre_feet = sum(quantity_acre_feet, na.rm = TRUE),
+                start_date = unique(start_date),
+                end_date = unique(end_date),
+                pwsid = unique(pwsid),
+                water_system_name = unique(water_system_name),
+                org_id = unique(org_id)) %>% 
+  ungroup()
 ```
 
 ### Line plot time series for total 
@@ -99,7 +125,10 @@ hist_goleta %>%
   filter(water_type == "total") %>% 
 
 ggplot(aes(x = start_date, y = quantity_acre_feet, color = water_produced_or_delivered)) +
-  geom_line()
+  geom_line() +
+  labs(x = "Date",
+       y = "Quantity (Acre-Feet)") +
+  theme_minimal()
 ```
 
 ### Line plot time series for specific water type
@@ -110,7 +139,10 @@ hist_goleta %>%
   filter(water_type %in% c("agriculture", "commercial/institutional", "groundwater wells", "other")) %>% 
   
   ggplot(aes(x = start_date, y = quantity_acre_feet, color = water_type, linetype = water_produced_or_delivered)) +
-  geom_line()
+  geom_line() +
+  labs(x = "Date",
+       y = "Quantity (Acre-Feet)") +
+  theme_minimal()
 ```
 
 
@@ -166,7 +198,13 @@ monthly_alameda %>%
                values_to = "acre_feet") %>% 
 
 ggplot(aes(x = forecast_start_date, y = acre_feet, fill = use_supply_aug_red)) + 
-  geom_col(position = "dodge")
+  geom_col(position = "dodge") +
+  labs(x = "Date",
+       y = "Acre-Feet",
+       fill = element_blank()) +
+  scale_fill_discrete(labels = c("Demand Reduction", "Supply Augmentation", "Shortage/Surplus")) +
+  theme_minimal()
+  
 ```
 
 ### Total NA values for Short/Sur, Reduction, Supply Aug
@@ -203,15 +241,41 @@ monthly_alameda_values <- monthly_alameda %>%
 #### Filter to Goleta
 ```{r}
 shortage_goleta <- water_shortage %>% 
-  filter(org_id == 1068)
+  filter(org_id == 1068) %>% 
+  mutate(month = month(start_date),
+         year = year(start_date)) %>% 
+  filter(year == 2022)
 ```
 
 #### Bar Plot of shortage
 
 ```{r}
-ggplot(shortage_goleta, aes(x = start_date, y = state_standard_shortage_level)) +
-  geom_col()
+ggplot(shortage_goleta, aes(x = month, y = state_standard_shortage_level)) +
+  geom_col(fill = "orange3") +
+  scale_x_continuous(
+    breaks = 1:12,
+    labels = c("Jan", "Feb", "Mar", "Apr", "May", "June", 
+               "July", "Aug", "Sep", "Oct", "Nov", "Dec")
+  ) +
+  labs(x = "Month",
+       y = "Shortage Level") +
+  theme_minimal()
 ```
+
+```{r}
+ggplot(shortage_goleta, aes(x = month, y = state_standard_shortage_level)) +
+  geom_point() +
+  scale_x_continuous(
+    breaks = 1:12,
+    labels = c("Jan", "Feb", "Mar", "Apr", "May", "June", 
+               "July", "Aug", "Sep", "Oct", "Nov", "Dec")
+  ) +
+  labs(x = "Month",
+       y = "Shortage Level") +
+  theme_minimal()
+```
+
+
 
 ### NAs for shortage
 
