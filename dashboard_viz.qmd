@@ -17,10 +17,10 @@ library(ggExtra)
 ### Load data
 ```{r}
 # Metric data
-water_shortage <- read_csv(here("data", "actual_water_shortage_level.csv"))
-five_year_shortage <- read_csv(here("data", "five_year_water_shortage_outlook.csv"))
+actual_shortage <- read_csv(here("data", "actual_water_shortage_level.csv"))
+five_year_outlook <- read_csv(here("data", "five_year_water_shortage_outlook.csv"))
 historical_production <- read_csv(here("data", "historical_production_delivery.csv"))
-monthly_water_shortage <- read_csv(here("data", "monthly_water_shortage_outlook.csv"))
+monthly_water_outlook <- read_csv(here("data", "monthly_water_shortage_outlook.csv"))
 source_name <- read_csv(here("data", "source_name.csv"))
 population <- read_csv(here("data", "population_clean.csv"))
 ```
@@ -32,7 +32,7 @@ population <- read_csv(here("data", "population_clean.csv"))
 All of the visualizations will be for the Goleta water district (org_id = 1068)
 
 ```{r}
-five_year_goleta <- five_year_shortage %>% 
+five_year_goleta <- five_year_outlook %>% 
   filter(org_id == 1068) %>% 
   
   # Combining use, supply, aug, red into one column 
@@ -50,6 +50,67 @@ five_year_goleta$use_supply_aug_red <- factor(five_year_goleta$use_supply_aug_re
                                                          "Supply Augmentation", "Demand Reduction")) 
 ```
 
+### Function for 5 Year Filter
+
+```{r}
+five_filter_function <- function(id) {
+  
+  # Create filtered df from original
+  five_year_filter <- five_year_outlook %>% 
+  
+  # Filter data to specific org_id
+  filter(org_id == id) %>% 
+    
+    # Combining use, supply, augmentation, reduction into one columns
+    pivot_longer(cols = c(starts_with("water"), starts_with("benefit")),
+                 names_to = "use_supply_aug_red",
+                 values_to = "acre_feet")
+  
+  # Renaming & reordering the observations for the plot & table outputs
+  five_year_filter$use_supply_aug_red <- factor(five_year_filter$use_supply_aug_red,
+                                                levels = c("water_supplies_acre_feet", # reordering observations
+                                                         "water_use_acre_feet",
+                                                         "benefit_supply_augmentation_acre_feet",
+                                                         "benefit_demand_reduction_acre_feet"),
+                                              labels = c("Supply", "Use",  # renaming observations
+                                                         "Supply Augmentation", "Demand Reduction")) 
+  
+  return(five_year_filter)
+}
+```
+
+### Function for Five Year Bar Plot
+
+```{r}
+five_year_plot <- function(id) {
+  
+  # Using five_filter_function for pre-filtered data
+  filtered_data <- five_filter_function(id)
+  
+  # Generate the ggplot
+  ggplot(five_year_goleta, aes(x = forecast_start_date, y = acre_feet, fill = use_supply_aug_red)) +
+    
+    # Geom col for a bar plot 
+    geom_col(position = "dodge") + # dodge lines up bars side by side
+    
+    # Labels
+    labs(x = "Forecast Date",
+         y = "Acre-Feet",
+         fill = element_blank()) + # Get's rid of the legend
+    
+    # Manually choose bar colors   
+    scale_fill_manual(values = c("coral", "steelblue", "forestgreen", "violetred")) + 
+    theme_minimal()
+  
+  
+}
+
+five_year_plot(1068)
+```
+
+
+
+
 #### Bar chart
 ```{r}
 
@@ -63,6 +124,31 @@ ggplot(five_year_goleta, aes(x = forecast_start_date, y = acre_feet, fill = use_
   scale_fill_manual(values = c("coral", "steelblue", "forestgreen", "violetred")) + 
   theme_minimal()
 ```
+### Function for NA values
+
+```{r}
+five_na_function <- function(id){
+  
+  # Use filtered data
+  five_year_na <- five_filter_function(id)
+
+  # Calculate NAs
+  five_year_na %>% 
+    
+    # Group by the four metrics we are interested in
+    group_by(use_supply_aug_red) %>% 
+    
+    # Calculate total rows, total NAs, percentage
+    summarize(total_obs = n(),
+              total_na = sum(is.na(acre_feet)),
+              na_percentage = total_na / total_obs * 100)
+
+}
+
+five_na_function(1068)
+```
+
+
 
 #### NA values
 
@@ -76,6 +162,30 @@ five_year_goleta %>%
             total_na = sum(is.na(acre_feet)),
             na_percentage = total_na / total_obs * 100)
 ```
+
+### Function for total Values
+
+```{r}
+five_values_function <- function(id){
+  
+  # Use filtered data
+  five_values <- five_filter_function(id)
+  
+  five_values %>% 
+    
+    # Group metrics we are interested in 
+    group_by(use_supply_aug_red) %>% 
+    
+    # Summarize there total acre_feet 
+    summarize(total_value = sum(acre_feet))
+  
+}
+
+five_values_function(1068)
+```
+
+
+
 
 #### Total Values
 ```{r}
@@ -181,6 +291,28 @@ hist_goleta_values <- hist_goleta %>%
   # Summing quantity acre-feet for total 
   summarize(total_value = sum(quantity_acre_feet, na.rm = TRUE))
 ```
+### NA Values for Specific water type
+
+```{r}
+hist_goleta_na2 <- hist_goleta %>% 
+  
+  # Filter out total b/c we created this, not a part of the original data
+  # Don't want to include it in our calculation 
+  filter(water_type != "total") %>% 
+  group_by(water_produced_or_delivered, water_type) %>% 
+  
+  # Calculate total observations, total NAs, and NA percentage 
+  summarize(total_obs = n(),
+            total_na = sum(is.na(quantity_acre_feet)),
+            na_percentage = total_na / total_obs * 100) %>% 
+  
+  # Filter to only the variables we want 
+  # In this case these are randomly selected
+  filter(water_type %in% c("agriculture", "commercial/institutional", "groundwater wells", "other"))
+```
+
+
+
 
 ### Total Values for Specific water type
 THIS GIVES ME THE TOTAL VALUES FOR EACH WATER TYPE FOR EVERY YEAR. THE GOAL IS WHEN WE CHANGE THE DATE RANGE, THESE VALUES WILL CHANGE WITH IT
@@ -206,7 +338,7 @@ hist_goleta_values2 <- hist_goleta %>%
 #### Filter to Alameda, WE DON'T HAVE GOLETA WATER DISTRICT IN THIS DATASET
 ```{r}
 # Filter to Alameda 
-monthly_alameda <- monthly_water_shortage %>% 
+monthly_alameda <- monthly_water_outlook %>% 
   filter(org_id == 23)
 ```
 
@@ -274,6 +406,26 @@ monthly_alameda_values <- monthly_alameda %>%
   summarize(total = sum(acre_feet, na.rm = TRUE))
 
 ```
+### Number of months the data is present for values above
+
+```{r}
+monthly_alameda_months <- monthly_alameda %>% 
+  
+  # Pivot columns for easier computation
+  pivot_longer(cols = c(shortage_surplus_acre_feet, starts_with("benefit")),
+               names_to = "use_supply_aug_red",
+               values_to = "acre_feet") %>% 
+  
+  # Remove total annual observations
+  filter(is_annual == FALSE,
+         
+  # Filter where observations not = 0 
+         acre_feet != 0) %>% 
+  
+  # Group by new column and summarize total acre-feet
+  group_by(use_supply_aug_red) %>% 
+  summarize(num_months = n())
+```
 
 
 
@@ -283,7 +435,7 @@ monthly_alameda_values <- monthly_alameda %>%
 #### Filter to Goleta
 ```{r}
 # Filter water shortage to Goleta 
-shortage_goleta <- water_shortage %>% 
+shortage_goleta <- actual_shortage %>% 
   filter(org_id == 1068) %>% 
   
   # Create month and year columns 
