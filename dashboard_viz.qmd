@@ -230,6 +230,44 @@ hist_goleta <- hist_goleta %>%
   ) %>% 
   ungroup()
 ```
+### Function for historical production filtering
+
+```{r}
+hist_filt_function <- function(id){
+  
+  hist_filter <- historical_production %>% 
+    
+    # filter to org_id
+    filter(org_id == id) %>% 
+    
+    # Group by date 
+    group_by(start_date) %>% 
+    
+    # Append a new row for each start_date & produced_delivered calculating the "total" 
+    bind_rows(
+      hist_goleta %>% 
+        group_by(start_date, water_produced_or_delivered) %>% 
+        
+        # Summarize is producing a new total row by the group by above 
+        summarize(water_type = "total",
+                  quantity_acre_feet = sum(quantity_acre_feet, na.rm = TRUE),
+                  
+                  # Using unique returns the "original" observation of these columns,
+                  # These are not being changed 
+                  start_date = unique(start_date),
+                  end_date = unique(end_date),
+                  pwsid = unique(pwsid),
+                  water_system_name = unique(water_system_name),
+                  org_id = unique(org_id))
+    ) %>% 
+    ungroup()
+}
+
+View(hist_filt_function(1068))
+```
+
+
+
 
 ### Line plot time series for total 
 
@@ -243,6 +281,57 @@ ggplot(aes(x = start_date, y = quantity_acre_feet, color = water_produced_or_del
        y = "Quantity (Acre-Feet)") +
   theme_minimal()
 ```
+
+### Function for creating historical production line plot
+
+```{r}
+
+hist_plot_function <- function(id, type){
+  
+  # Use filtered historical production data
+  hist_plot <- hist_filt_function(id) %>% 
+    
+    # filter for water type
+    filter(water_type == type) %>% 
+    
+    # Plot filtered data 
+    ggplot(aes(x = start_date, y = quantity_acre_feet, color = water_produced_or_delivered)) +
+    geom_line() +
+    labs(x = "Date",
+         y = "Quantity (Acre-Feet)") +
+    theme_minimal()
+  
+  return(hist_plot)
+}
+
+# Example function output
+hist_plot_function(1068, "total")
+```
+### Function for all historical production data for all water types
+
+```{r}
+hist_plot_function <- function(id, type){
+  
+  # Use filtered historical production data
+  hist_plot <- hist_filt_function(id) %>% 
+    
+    # filter for water type
+    filter(water_type %in% type) %>% 
+    
+    # Plot filtered data 
+    ggplot(aes(x = start_date, y = quantity_acre_feet, color = water_type, linetype = water_produced_or_delivered)) +
+    geom_line() +
+    labs(x = "Date",
+         y = "Quantity (Acre-Feet)") +
+    theme_minimal()
+  
+  return(hist_plot)
+}
+
+# Example function output
+hist_plot_function(1068, c("agriculture", "industrial", "landscape irrigation", "recycled", "total"))
+```
+
 
 ### Line plot time series for specific water type
 
@@ -258,10 +347,31 @@ hist_goleta %>%
        y = "Quantity (Acre-Feet)") +
   theme_minimal()
 ```
+### Function for NA values for all produced/delivered
+```{r}
+hist_na_function <- function(id){
+  
+  # Calculating NAs 
+  hist_na <- hist_filt_function(id) %>% 
+    
+    # Filter out total b/c we created this, not a part of the original data
+    # Don't want to include it in our calculation 
+    filter(water_type != "total") %>% 
+    group_by(water_produced_or_delivered) %>% 
+    
+    # Calculate total observations, total NAs, and NA percentage 
+    summarize(total_obs = n(),
+              total_na = sum(is.na(quantity_acre_feet)),
+              na_percentage = total_na / total_obs * 100)
+  
+  return(hist_na)
+}
+
+hist_na_function(1068)
+```
 
 
-### NA values for all produced/delivered NEED TO TAKE OUT 'TOTAL' FOR CALCULATION B/C IT WAS ADDED TO DF
-
+### NA values for all produced/delivered 
 ```{r}
 # Calculating NAs 
 hist_goleta_na <- hist_goleta %>% 
@@ -278,6 +388,28 @@ hist_goleta_na <- hist_goleta %>%
 ```
 
 
+### Function for total values for produced/delivered
+
+```{r}
+hist_values_function <- function(id){
+  # Calculating total values for "total produced/delivered"
+  hist_values <- hist_filt_function(id) %>% 
+    
+    # Filter out "total" as its not a part of the original data
+    filter(water_type != "total") %>% 
+    group_by(water_produced_or_delivered) %>% 
+    
+    # Summing quantity acre-feet for total 
+    summarize(total_value = sum(quantity_acre_feet, na.rm = TRUE))
+  
+  return(hist_values)
+}
+
+hist_values_function(1068)
+```
+
+
+
 ### Total values for all produced/delivered
 
 ```{r}
@@ -291,6 +423,36 @@ hist_goleta_values <- hist_goleta %>%
   # Summing quantity acre-feet for total 
   summarize(total_value = sum(quantity_acre_feet, na.rm = TRUE))
 ```
+
+### Function for NAs for specific water types
+
+```{r}
+hist_na_specific_function <- function(id){
+  
+  hist_na_specific <- hist_filt_function(id) %>% 
+    
+    # Filter out total b/c we created this, not a part of the original data
+    # Don't want to include it in our calculation 
+    filter(water_type != "total") %>% 
+    group_by(water_produced_or_delivered, water_type) %>% 
+    
+    # Calculate total observations, total NAs, and NA percentage 
+    summarize(total_obs = n(),
+              total_na = sum(is.na(quantity_acre_feet)),
+              na_percentage = total_na / total_obs * 100) %>% 
+    
+    # Filter to only the variables we want 
+    # In this case these are randomly selected
+    filter(water_type %in% c("agriculture", "commercial/institutional", "groundwater wells", "other"))
+  
+  return(hist_na_specific)
+}
+
+hist_na_specific_function(1068)
+```
+
+
+
 ### NA Values for Specific water type
 
 ```{r}
@@ -311,6 +473,27 @@ hist_goleta_na2 <- hist_goleta %>%
   filter(water_type %in% c("agriculture", "commercial/institutional", "groundwater wells", "other"))
 ```
 
+### Function for total Values for Specific water type
+
+```{r}
+hist_values_specific <- function(id, type){
+  
+  # Calculating values for specific water types chosen above 
+  hist_values_specific <- hist_filt_function(id) %>% 
+    
+    # Filter out "total" as it's not a part of the original data
+    filter(water_type != "total") %>% 
+    group_by(water_produced_or_delivered, water_type) %>% 
+    
+    # Calculating totals and then filtered to chosen water types 
+    summarize(total_value = sum(quantity_acre_feet, na.rm = TRUE)) %>% 
+    filter(water_type %in% type)
+  
+  return(hist_values_specific)
+}
+
+hist_values_specific(1068, c("recycled", "agriculture", "surface water"))
+```
 
 
 
@@ -341,6 +524,56 @@ hist_goleta_values2 <- hist_goleta %>%
 monthly_alameda <- monthly_water_outlook %>% 
   filter(org_id == 23)
 ```
+
+
+### Function to filter Monthly water shortage df
+```{r}
+monthly_filter <- function(id){
+  
+  # Filter to org_id
+  monthly_filter <- monthly_water_outlook %>% 
+    filter(org_id == id)
+  
+  return(monthly_filter)
+}
+
+monthly_filter(23)
+```
+### Function for bar plot creation
+```{r}
+monthly_plot_function <- function(id){
+  
+  monthly_plot <- monthly_filter(id) %>% 
+  
+  # Filter out annual reports, interested in monthly metrics
+  filter(is_annual == "FALSE") %>%
+  
+  # Pivot longer shortage surplus, benefit demand reduction and benefit supply aug columns
+  # Want information in one column for easier access when plotting
+  pivot_longer(cols = c(shortage_surplus_acre_feet, starts_with("benefit")),
+               names_to = "use_supply_aug_red",
+               values_to = "acre_feet") %>% 
+  
+  # Plot data 
+  ggplot(aes(x = forecast_start_date, y = acre_feet, fill = use_supply_aug_red)) + 
+  geom_col(position = "dodge") +
+  labs(x = "Date",
+       y = "Acre-Feet",
+       fill = element_blank()) +
+  
+  # Changing labels for graph representation 
+  scale_fill_discrete(labels = c("Demand Reduction", "Supply Augmentation", "Shortage/Surplus")) +
+  theme_minimal()
+  
+  return(monthly_plot)
+  
+}
+
+monthly_plot_function(23)
+```
+
+
+
 
 ### Bar plot for shortage percentage
 
@@ -389,6 +622,57 @@ monthly_alameda_na <- monthly_alameda %>%
             na_percentage = total_na / total_obs * 100)
 ```
 
+### Function for total NA values 
+
+```{r}
+monthly_na_function <- function(id){
+  
+  # Calculate alameda NAs for dashboard 
+  monthly_na <- monthly_filter(id) %>% 
+    
+    # Pivoting columns for easier computation 
+    pivot_longer(cols = c(shortage_surplus_acre_feet, starts_with("benefit")),
+                 names_to = "use_supply_aug_red",
+                 values_to = "acre_feet") %>% 
+    
+    # Group by new pivoted column 
+    group_by(use_supply_aug_red) %>% 
+    
+    # Summarizing total observations, total NAs, and NA percentage 
+    summarize(total_obs = n(),
+              total_na = sum(is.na(acre_feet)),
+              na_percentage = total_na / total_obs * 100)
+  
+  return(monthly_na)
+}
+
+monthly_na_function(23)
+```
+
+### Function for total values
+```{r}
+monthly_values_function <- function(id){
+  
+  # Calculate total values 
+  monthly_values <- monthly_filter(id) %>% 
+    
+    # Pivot columns for easier computation 
+    pivot_longer(cols = c(shortage_surplus_acre_feet, starts_with("benefit")),
+                 names_to = "use_supply_aug_red",
+                 values_to = "acre_feet") %>% 
+    
+    # Group by new column and summarize total acre-feet
+    group_by(use_supply_aug_red) %>% 
+    summarize(total = sum(acre_feet, na.rm = TRUE))
+  
+  return(monthly_values)
+}
+
+monthly_values_function(23)
+
+```
+
+
 ### Total values for Short/sur, reduction, supply aug
 
 ```{r}
@@ -427,6 +711,32 @@ monthly_alameda_months <- monthly_alameda %>%
   summarize(num_months = n())
 ```
 
+### Function for number of months the data is present
+```{r}
+monthly_months_function <- function(id){
+  
+  monthly_months <- monthly_filter(id) %>% 
+  
+  # Pivot columns for easier computation
+  pivot_longer(cols = c(shortage_surplus_acre_feet, starts_with("benefit")),
+               names_to = "use_supply_aug_red",
+               values_to = "acre_feet") %>% 
+    
+    # Remove total annual observations
+    filter(is_annual == FALSE,
+           
+           # Filter where observations not = 0 
+           acre_feet != 0) %>% 
+    
+    # Group by new column and summarize total acre-feet
+    group_by(use_supply_aug_red) %>% 
+    summarize(num_months = n())
+  
+  return(monthly_months)
+}
+
+monthly_months_function(23)
+```
 
 
 
@@ -445,6 +755,51 @@ shortage_goleta <- actual_shortage %>%
   # Filter to only 2022 for our Dashboard Mockup, need to change for function making 
   filter(year == 2022)
 ```
+
+### Function for actual water shortage filter
+```{r}
+actual_filter_function <- function(id){
+  
+  # Filter water shortage to Goleta 
+  actual_filter <- actual_shortage %>% 
+    filter(org_id == id) %>% 
+    
+    # Create month and year columns 
+    mutate(month = month(start_date),
+           year = year(start_date))
+  
+  return(actual_filter)
+}
+
+```
+
+### Function for bar plot
+
+```{r}
+actual_plot_function <- function(id){
+  
+  # Plot Water shortage levels for Goleta 
+  ggplot(actual_filter_function(id), aes(x = month, y = state_standard_shortage_level)) +
+    geom_col(fill = "orange3") +
+    scale_x_continuous(
+      
+      # Create breaks for 12 months
+      breaks = 1:12, 
+      
+      # Change labels from numbers into month abbreviations
+      labels = c("Jan", "Feb", "Mar", "Apr", "May", "June", 
+                 "July", "Aug", "Sep", "Oct", "Nov", "Dec")) +
+    
+    labs(x = "Month",
+         y = "Shortage Level") +
+    theme_minimal()
+  
+  
+}
+
+actual_plot_function(23)
+```
+
 
 #### Bar Plot of shortage
 
@@ -481,6 +836,24 @@ ggplot(shortage_goleta, aes(x = month, y = state_standard_shortage_level)) +
   theme_minimal()
 ```
 
+### Function for NAs
+```{r}
+actual_na_function <- function(id){
+  # Calculating water shortage level NAs
+  actual_na <- actual_filter_function(id) %>% 
+    
+    # Summarize total observations, total NAs, NA Percentage 
+    summarize(total_obs = n(),
+              total_na = sum(is.na(state_standard_shortage_level)),
+              na_percentage = total_na / total_obs * 100)
+  
+  
+  return(actual_na)
+  
+}
+
+actual_na_function(1068)
+```
 
 
 ### NAs for shortage
@@ -494,6 +867,22 @@ shortage_goleta_na <- shortage_goleta %>%
             total_na = sum(is.na(state_standard_shortage_level)),
             na_percentage = total_na / total_obs * 100)
 ```
+
+### Function for average values
+```{r}
+actual_values_function <- function(id){
+  
+  # Calculating total values
+  actual_values <- actual_filter_function(id) %>% 
+  summarize(average = mean(state_standard_shortage_level, na.rm = TRUE))
+  
+  return(actual_values)
+}
+
+actual_values_function(1068)
+```
+
+
 
 ### Average Values for shortage
 
