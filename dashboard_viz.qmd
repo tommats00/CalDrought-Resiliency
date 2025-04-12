@@ -24,7 +24,7 @@ five_year_outlook <- read_csv(here("data", "five_year_water_shortage_outlook.csv
 historical_production <- read_csv(here("data", "historical_production_delivery.csv"))
 monthly_water_outlook <- read_csv(here("data", "monthly_water_shortage_outlook.csv"))
 source_name <- read_csv(here("data", "source_name.csv"))
-population <- read_csv(here("data", "population_clean.csv"))
+# population <- read_csv(here("data", "population_clean.csv"))
 ```
 
 ## Five year shortage dataframe
@@ -212,10 +212,10 @@ five_year_goleta %>%
 ```{r}
 # Filter original data to Goleta Water District 
 hist_goleta <- historical_production %>% 
-  filter(org_id == 1068) 
+  filter(org_id == 1068) %>% 
+  
+  mutate(year_month = format(start_date, "%Y-%m")) %>% 
 
-# Reassign the dataframe for new row, "total", calculation
-hist_goleta <- hist_goleta %>%   
   group_by(start_date) %>% 
   
   # Append a new row for each start_date & produced_delivered calculating the "total" 
@@ -232,15 +232,17 @@ hist_goleta <- hist_goleta %>%
                 end_date = unique(end_date),
                 pwsid = unique(pwsid),
                 water_system_name = unique(water_system_name),
-                org_id = unique(org_id))
+                org_id = unique(org_id),
+                year_month = unique(year_month))
   ) %>% 
-  ungroup()
+  ungroup() %>% 
+  filter(year_month %in% c("2013-01", "2013-12"))
 ```
 
 ### Function for historical production filtering
 
 ```{r}
-hist_filt_function <- function(id, year){
+hist_filt_function <- function(id, year_month){
   
   hist_filter <- historical_production %>% 
     
@@ -248,17 +250,20 @@ hist_filt_function <- function(id, year){
     filter(org_id == id) %>% 
     
     # Create new forecast year column
-    mutate(year_month = lubridate::ym(start_date)) %>% 
+    mutate(year_month = format(start_date, "%Y-%m")) %>% 
     
     # Filter for a given year range
-    filter(year_month %in% year) %>% 
+    filter(year_month %in% year_month)
+  
     
+  
+  hist_total <- hist_filter %>% 
     # Group by date 
     group_by(start_date) %>% 
     
     # Append a new row for each start_date & produced_delivered calculating the "total" 
     bind_rows(
-      hist_goleta %>% 
+      hist_filter %>% 
         group_by(start_date, water_produced_or_delivered) %>% 
         
         # Summarize is producing a new total row by the group by above 
@@ -271,12 +276,13 @@ hist_filt_function <- function(id, year){
                   end_date = unique(end_date),
                   pwsid = unique(pwsid),
                   water_system_name = unique(water_system_name),
-                  org_id = unique(org_id))
+                  org_id = unique(org_id),
+                  year_month = unique(year_month))
     ) %>% 
-    ungroup()
+    ungroup() 
 }
 
-View(hist_filt_function(1068, c("2015-01", "2021-05")))
+View(hist_filt_function(1068, year_month = "2013-01"))
 ```
 
 ### Line plot time series for total
