@@ -209,6 +209,8 @@ five_year_goleta %>%
 
 ### Filter to Goleta Water District (org_id = 1068)
 
+Each time I run this, it adds to the newly calculated total column, the function is working fine I think tho
+
 ```{r}
 # Filter original data to Goleta Water District 
 hist_goleta <- historical_production %>% 
@@ -236,13 +238,24 @@ hist_goleta <- historical_production %>%
                 year_month = unique(year_month))
   ) %>% 
   ungroup() %>% 
-  filter(year_month %in% c("2013-01", "2013-12"))
+  filter(year_month %in% c("2013-01", "2013-02", "2013-03", "2013-04", "2013-05"))
 ```
 
 ### Function for historical production filtering
 
+This seems to be working fine. Using org_id and date as the arguments.
+
 ```{r}
-hist_filt_function <- function(id, year_month){
+hist_filt_function <- function(id, date){
+  
+    # 🔧 NEW: if date has 2 values, assume it's a start/end range and expand it
+  if (length(date) == 2) {
+    date <- seq(
+      from = lubridate::ymd(paste0(date[1], "-01")),
+      to   = lubridate::ymd(paste0(date[2], "-01")),
+      by   = "1 month"
+    ) %>% format("%Y-%m")
+  }
   
   hist_filter <- historical_production %>% 
     
@@ -250,13 +263,8 @@ hist_filt_function <- function(id, year_month){
     filter(org_id == id) %>% 
     
     # Create new forecast year column
-    mutate(year_month = format(start_date, "%Y-%m")) %>% 
+    mutate(year_month = format(start_date, "%Y-%m"))  
     
-    # Filter for a given year range
-    filter(year_month %in% year_month)
-  
-    
-  
   hist_total <- hist_filter %>% 
     # Group by date 
     group_by(start_date) %>% 
@@ -279,10 +287,12 @@ hist_filt_function <- function(id, year_month){
                   org_id = unique(org_id),
                   year_month = unique(year_month))
     ) %>% 
-    ungroup() 
-}
+    ungroup() %>% 
+    # Filter for a given year range
+    filter(year_month %in% date)
+} 
 
-View(hist_filt_function(1068, year_month = "2013-01"))
+View(hist_filt_function(1068, date = c("2013-01", "2013-06")))
 ```
 
 ### Line plot time series for total
@@ -302,10 +312,10 @@ ggplot(aes(x = start_date, y = quantity_acre_feet, color = water_produced_or_del
 
 ```{r}
 
-hist_plot_function <- function(id, type){
+hist_plot_function <- function(id, type, date){
   
   # Use filtered historical production data
-  hist_plot <- hist_filt_function(id) %>% 
+  hist_plot <- hist_filt_function(id, date) %>% 
     
     # filter for water type
     filter(water_type == type) %>% 
@@ -321,16 +331,16 @@ hist_plot_function <- function(id, type){
 }
 
 # Example function output
-hist_plot_function(1068, "total")
+hist_plot_function(1068, "total", c("2013-01", "2013-06"))
 ```
 
 ### Function for all historical production data for all water types
 
 ```{r}
-hist_plot_function <- function(id, type){
+hist_plot_function <- function(id, type, date){
   
   # Use filtered historical production data
-  hist_plot <- hist_filt_function(id) %>% 
+  hist_plot <- hist_filt_function(id, date ) %>% 
     
     # filter for water type
     filter(water_type %in% type) %>% 
@@ -346,7 +356,7 @@ hist_plot_function <- function(id, type){
 }
 
 # Example function output
-hist_plot_function(1068, c("agriculture", "industrial", "landscape irrigation", "recycled", "total"))
+hist_plot_function(1068, c("agriculture", "industrial", "landscape irrigation", "recycled", "total"), c("2013-01", "2013-06"))
 ```
 
 ### Line plot time series for specific water type
@@ -367,10 +377,10 @@ hist_goleta %>%
 ### Function for NA values for all produced/delivered
 
 ```{r}
-hist_na_function <- function(id){
+hist_na_function <- function(id, date){
   
   # Calculating NAs 
-  hist_na <- hist_filt_function(id) %>% 
+  hist_na <- hist_filt_function(id, date) %>% 
     
     # Filter out total b/c we created this, not a part of the original data
     # Don't want to include it in our calculation 
@@ -385,7 +395,7 @@ hist_na_function <- function(id){
   return(hist_na)
 }
 
-hist_na_function(1068)
+hist_na_function(1068, c("2013-01", "2013-05"))
 ```
 
 ### NA values for all produced/delivered
@@ -408,9 +418,9 @@ hist_goleta_na <- hist_goleta %>%
 ### Function for total values for produced/delivered
 
 ```{r}
-hist_values_function <- function(id){
+hist_values_function <- function(id, date){
   # Calculating total values for "total produced/delivered"
-  hist_values <- hist_filt_function(id) %>% 
+  hist_values <- hist_filt_function(id, date) %>% 
     
     # Filter out "total" as its not a part of the original data
     filter(water_type != "total") %>% 
@@ -422,7 +432,7 @@ hist_values_function <- function(id){
   return(hist_values)
 }
 
-hist_values_function(1068)
+hist_values_function(1068, c("2013-01", "2013-05"))
 ```
 
 ### Total values for all produced/delivered
@@ -442,9 +452,9 @@ hist_goleta_values <- hist_goleta %>%
 ### Function for NAs for specific water types
 
 ```{r}
-hist_na_specific_function <- function(id){
+hist_na_specific_function <- function(id, date){
   
-  hist_na_specific <- hist_filt_function(id) %>% 
+  hist_na_specific <- hist_filt_function(id, date) %>% 
     
     # Filter out total b/c we created this, not a part of the original data
     # Don't want to include it in our calculation 
@@ -463,7 +473,7 @@ hist_na_specific_function <- function(id){
   return(hist_na_specific)
 }
 
-hist_na_specific_function(1068)
+hist_na_specific_function(1068, c("2013-01", "2013-05"))
 ```
 
 ### NA Values for Specific water type
@@ -489,10 +499,10 @@ hist_goleta_na2 <- hist_goleta %>%
 ### Function for total Values for Specific water type
 
 ```{r}
-hist_values_specific <- function(id, type){
+hist_values_specific <- function(id, type, date){
   
   # Calculating values for specific water types chosen above 
-  hist_values_specific <- hist_filt_function(id) %>% 
+  hist_values_specific <- hist_filt_function(id, date) %>% 
     
     # Filter out "total" as it's not a part of the original data
     filter(water_type != "total") %>% 
@@ -505,7 +515,7 @@ hist_values_specific <- function(id, type){
   return(hist_values_specific)
 }
 
-hist_values_specific(1068, c("recycled", "agriculture", "surface water"))
+hist_values_specific(1068, c("recycled", "agriculture", "surface water"), c("2013-01", "2013-05"))
 ```
 
 ### Total Values for Specific water type
@@ -522,7 +532,7 @@ hist_goleta_values2 <- hist_goleta %>%
   
   # Calculating totals and then filtered to chosen water types 
   summarize(total_value = sum(quantity_acre_feet, na.rm = TRUE)) %>% 
-  filter(water_type %in% c("agriculture", "commercial/institutional", "groundwater wells", "other"))
+  filter(water_type %in% c("agriculture", "recycled", "surface water"))
 ```
 
 ## Monthly Water Shortage DF
@@ -532,30 +542,48 @@ hist_goleta_values2 <- hist_goleta %>%
 ```{r}
 # Filter to Alameda 
 monthly_alameda <- monthly_water_outlook %>% 
-  filter(org_id == 23)
+  filter(org_id == 23) %>% 
+  
+  mutate(year_month = format(forecast_start_date, "%Y-%m")) %>% 
+  
+  filter(year_month %in% c("2024-07", "2024-08", "2024-09"))
 ```
 
 ### Function to filter Monthly water shortage df
 
 ```{r}
-monthly_filter <- function(id){
+monthly_filter <- function(id, date){
+  
+   # 🔧 NEW: if date has 2 values, assume it's a start/end range and expand it
+  if (length(date) == 2) {
+    date <- seq(
+      from = lubridate::ymd(paste0(date[1], "-01")),
+      to   = lubridate::ymd(paste0(date[2], "-01")),
+      by   = "1 month"
+    ) %>% format("%Y-%m")
+  }
   
   # Filter to org_id
   monthly_filter <- monthly_water_outlook %>% 
-    filter(org_id == id)
+    filter(org_id == id) %>% 
+    
+     # Create new forecast year column
+    mutate(year_month = format(forecast_start_date, "%Y-%m")) %>% 
+    
+    filter(year_month %in% date)
   
   return(monthly_filter)
 }
 
-monthly_filter(23)
+View(monthly_filter(23, c("2024-07", "2024-09")))
 ```
 
 ### Function for bar plot creation
 
 ```{r}
-monthly_plot_function <- function(id){
+monthly_plot_function <- function(id, date){
   
-  monthly_plot <- monthly_filter(id) %>% 
+  monthly_plot <- monthly_filter(id, date) %>% 
   
   # Filter out annual reports, interested in monthly metrics
   filter(is_annual == "FALSE") %>%
@@ -581,7 +609,7 @@ monthly_plot_function <- function(id){
   
 }
 
-monthly_plot_function(23)
+monthly_plot_function(23, c("2024-07", "2024-09"))
 ```
 
 ### Bar plot for shortage percentage
@@ -634,10 +662,10 @@ monthly_alameda_na <- monthly_alameda %>%
 ### Function for total NA values
 
 ```{r}
-monthly_na_function <- function(id){
+monthly_na_function <- function(id, date){
   
   # Calculate alameda NAs for dashboard 
-  monthly_na <- monthly_filter(id) %>% 
+  monthly_na <- monthly_filter(id, date) %>% 
     
     # Pivoting columns for easier computation 
     pivot_longer(cols = c(shortage_surplus_acre_feet, starts_with("benefit")),
@@ -655,16 +683,16 @@ monthly_na_function <- function(id){
   return(monthly_na)
 }
 
-monthly_na_function(23)
+monthly_na_function(23, c("2024-07", "2024-09"))
 ```
 
 ### Function for total values
 
 ```{r}
-monthly_values_function <- function(id){
+monthly_values_function <- function(id, date){
   
   # Calculate total values 
-  monthly_values <- monthly_filter(id) %>% 
+  monthly_values <- monthly_filter(id, date) %>% 
     
     # Pivot columns for easier computation 
     pivot_longer(cols = c(shortage_surplus_acre_feet, starts_with("benefit")),
@@ -678,7 +706,7 @@ monthly_values_function <- function(id){
   return(monthly_values)
 }
 
-monthly_values_function(23)
+monthly_values_function(23, c("2024-07", "2024-09"))
 
 ```
 
@@ -724,9 +752,9 @@ monthly_alameda_months <- monthly_alameda %>%
 ### Function for number of months the data is present
 
 ```{r}
-monthly_months_function <- function(id){
+monthly_months_function <- function(id, date){
   
-  monthly_months <- monthly_filter(id) %>% 
+  monthly_months <- monthly_filter(id, date) %>% 
   
   # Pivot columns for easier computation
   pivot_longer(cols = c(shortage_surplus_acre_feet, starts_with("benefit")),
@@ -746,7 +774,7 @@ monthly_months_function <- function(id){
   return(monthly_months)
 }
 
-monthly_months_function(23)
+monthly_months_function(23, c("2024-07", "2024-09"))
 ```
 
 ## Actual Water Shortage Level DF
@@ -758,41 +786,53 @@ monthly_months_function(23)
 shortage_goleta <- actual_shortage %>% 
   filter(org_id == 1068) %>% 
   
-  # Create month and year columns 
-  mutate(month = month(start_date),
-         year = year(start_date)) %>% 
-  
+  # Create a month_year column
+  mutate(month_year = format(start_date, "%Y-%m")) %>% 
+
   # Filter to only 2022 for our Dashboard Mockup, need to change for function making 
-  filter(year == 2022)
+  filter(month_year %in% c("2022-03", "2022-04", "2022-05"))
 ```
 
 ### Function for actual water shortage filter
 
 ```{r}
-actual_filter_function <- function(id){
+actual_filter_function <- function(id, date){
+  
+     # 🔧 NEW: if date has 2 values, assume it's a start/end range and expand it
+  if (length(date) == 2) {
+    date <- seq(
+      from = lubridate::ymd(paste0(date[1], "-01")),
+      to   = lubridate::ymd(paste0(date[2], "-01")),
+      by   = "1 month"
+    ) %>% format("%Y-%m")
+  }
+  
   
   # Filter water shortage to Goleta 
   actual_filter <- actual_shortage %>% 
     filter(org_id == id) %>% 
     
-    # Create month and year columns 
-    mutate(month = month(start_date),
-           year = year(start_date))
+    mutate(year_month = format(start_date, "%Y-%m")) %>% 
+    
+    filter(year_month %in% date)
   
   return(actual_filter)
 }
 
+View(actual_filter_function(1068, c("2022-03", "2022-05")))
 ```
 
 ### Function for bar plot
 
+NEED TO FIGURE OUT THIS FUNCTION
+
 ```{r}
-actual_plot_function <- function(id){
+actual_plot_function <- function(id, date){
   
   # Plot Water shortage levels for Goleta 
-  ggplot(actual_filter_function(id), aes(x = month, y = state_standard_shortage_level)) +
+  ggplot(actual_filter_function(id, date), aes(x = year_ month, y = state_standard_shortage_level)) +
     geom_col(fill = "orange3") +
-    scale_x_continuous(
+    scale_x_discrete(
       
       # Create breaks for 12 months
       breaks = 1:12, 
@@ -808,7 +848,7 @@ actual_plot_function <- function(id){
   
 }
 
-actual_plot_function(23)
+actual_plot_function(23, c("2022-03", "2022-05"))
 ```
 
 #### Bar Plot of shortage
