@@ -248,15 +248,19 @@ This seems to be working fine. Using org_id and date as the arguments.
 ```{r}
 hist_filt_function <- function(id, date){
   
-    # 🔧 NEW: if date has 2 values, assume it's a start/end range and expand it
+    # If date arguemnt has 2 values, assume it's a start/end range and expand it
   if (length(date) == 2) {
     date <- seq(
-      from = lubridate::ymd(paste0(date[1], "-01")),
-      to   = lubridate::ymd(paste0(date[2], "-01")),
-      by   = "1 month"
-    ) %>% format("%Y-%m")
+      from = lubridate::ymd(paste0(date[1], "-01")), # converts into a Date type
+      
+      to   = lubridate::ymd(paste0(date[2], "-01")), # converts into a Date type
+      
+      by   = "1 month" # sequences by month
+      
+    ) %>% format("%Y-%m") # formats back into Year and month, same as input values
   }
   
+  # Start of historical production filtering
   hist_filter <- historical_production %>% 
     
     # filter to org_id
@@ -285,7 +289,8 @@ hist_filt_function <- function(id, date){
                   pwsid = unique(pwsid),
                   water_system_name = unique(water_system_name),
                   org_id = unique(org_id),
-                  year_month = unique(year_month))
+                  year_month = unique(year_month),
+                  .groups = "drop_last")
     ) %>% 
     ungroup() %>% 
     # Filter for a given year range
@@ -312,7 +317,7 @@ ggplot(aes(x = start_date, y = quantity_acre_feet, color = water_produced_or_del
 
 ```{r}
 
-hist_plot_function <- function(id, type, date){
+hist_plot_all_function <- function(id, type, date){
   
   # Use filtered historical production data
   hist_plot <- hist_filt_function(id, date) %>% 
@@ -331,7 +336,7 @@ hist_plot_function <- function(id, type, date){
 }
 
 # Example function output
-hist_plot_function(1068, "total", c("2013-01", "2013-06"))
+hist_plot_all_function(1068, "total", c("2013-01", "2013-06"))
 ```
 
 ### Function for all historical production data for all water types
@@ -356,7 +361,7 @@ hist_plot_function <- function(id, type, date){
 }
 
 # Example function output
-hist_plot_function(1068, c("agriculture", "industrial", "landscape irrigation", "recycled", "total"), c("2013-01", "2013-06"))
+hist_plot_function(1068, c("total", "agriculture"), c("2013-01", "2013-06"))
 ```
 
 ### Line plot time series for specific water type
@@ -452,7 +457,7 @@ hist_goleta_values <- hist_goleta %>%
 ### Function for NAs for specific water types
 
 ```{r}
-hist_na_specific_function <- function(id, date){
+hist_na_specific_function <- function(id, date, type){
   
   hist_na_specific <- hist_filt_function(id, date) %>% 
     
@@ -468,12 +473,12 @@ hist_na_specific_function <- function(id, date){
     
     # Filter to only the variables we want 
     # In this case these are randomly selected
-    filter(water_type %in% c("agriculture", "commercial/institutional", "groundwater wells", "other"))
+    filter(water_type %in% type)
   
   return(hist_na_specific)
 }
 
-hist_na_specific_function(1068, c("2013-01", "2013-05"))
+hist_na_specific_function(1068, c("2013-01", "2013-05"), c("agriculture", "surface water"))
 ```
 
 ### NA Values for Specific water type
@@ -554,13 +559,15 @@ monthly_alameda <- monthly_water_outlook %>%
 ```{r}
 monthly_filter <- function(id, date){
   
-   # 🔧 NEW: if date has 2 values, assume it's a start/end range and expand it
+   # If date arguemnt has 2 values, assume it's a start/end range and expand it
   if (length(date) == 2) {
     date <- seq(
-      from = lubridate::ymd(paste0(date[1], "-01")),
-      to   = lubridate::ymd(paste0(date[2], "-01")),
-      by   = "1 month"
-    ) %>% format("%Y-%m")
+      from = lubridate::ymd(paste0(date[1], "-01")), # Converts into Date type
+      
+      to   = lubridate::ymd(paste0(date[2], "-01")), # Converts into Date type
+      
+      by   = "1 month" # sequences by month 
+    ) %>% format("%Y-%m") # Reformats back into year and month, same as input values
   }
   
   # Filter to org_id
@@ -798,13 +805,16 @@ shortage_goleta <- actual_shortage %>%
 ```{r}
 actual_filter_function <- function(id, date){
   
-     # 🔧 NEW: if date has 2 values, assume it's a start/end range and expand it
+  # If date arguemnt has 2 values, assume it's a start/end range and expand it
   if (length(date) == 2) {
     date <- seq(
-      from = lubridate::ymd(paste0(date[1], "-01")),
-      to   = lubridate::ymd(paste0(date[2], "-01")),
-      by   = "1 month"
-    ) %>% format("%Y-%m")
+      from = lubridate::ymd(paste0(date[1], "-01")), # Convert to Date type
+      
+      to   = lubridate::ymd(paste0(date[2], "-01")), # Convert to Date type
+      
+      by   = "1 month" # Sequence by month
+      
+    ) %>% format("%Y-%m") # Format back to Year and month, same as original input
   }
   
   
@@ -830,7 +840,7 @@ NEED TO FIGURE OUT THIS FUNCTION
 actual_plot_function <- function(id, date){
   
   # Plot Water shortage levels for Goleta 
-  ggplot(actual_filter_function(id, date), aes(x = year_ month, y = state_standard_shortage_level)) +
+  ggplot(actual_filter_function(id, date), aes(x = date, y = state_standard_shortage_level)) +
     geom_col(fill = "orange3") +
     scale_x_discrete(
       
@@ -889,9 +899,9 @@ ggplot(shortage_goleta, aes(x = month, y = state_standard_shortage_level)) +
 ### Function for NAs
 
 ```{r}
-actual_na_function <- function(id){
+actual_na_function <- function(id, date){
   # Calculating water shortage level NAs
-  actual_na <- actual_filter_function(id) %>% 
+  actual_na <- actual_filter_function(id, date) %>% 
     
     # Summarize total observations, total NAs, NA Percentage 
     summarize(total_obs = n(),
@@ -921,10 +931,10 @@ shortage_goleta_na <- shortage_goleta %>%
 ### Function for average values
 
 ```{r}
-actual_values_function <- function(id){
+actual_values_function <- function(id, date){
   
   # Calculating total values
-  actual_values <- actual_filter_function(id) %>% 
+  actual_values <- actual_filter_function(id, date) %>% 
   summarize(average = mean(state_standard_shortage_level, na.rm = TRUE))
   
   return(actual_values)
