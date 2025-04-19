@@ -57,6 +57,11 @@ five_year_goleta$use_supply_aug_red <- factor(five_year_goleta$use_supply_aug_re
 ```{r}
 five_filter_function <- function(id, year) {
   
+  # If year has two values, assume it's a range
+  if (length(year) == 2) {
+    year <- seq(from = as.numeric(year[1]), to = as.numeric(year[2]), by = 1)
+  }
+  
   # Create filtered df from original
   five_year_filter <- five_year_outlook %>% 
   
@@ -118,7 +123,7 @@ five_year_plot <- function(id, year) {
 }
 
 # Example
-five_year_plot(1068, c(2021:2024))
+five_year_plot(13, c(2021:2025))
 ```
 
 #### Bar chart
@@ -840,25 +845,31 @@ NEED TO FIGURE OUT THIS FUNCTION
 actual_plot_function <- function(id, date){
   
   # Plot Water shortage levels for Goleta 
-  ggplot(actual_filter_function(id, date), aes(x = date, y = state_standard_shortage_level)) +
-    geom_col(fill = "orange3") +
-    scale_x_discrete(
-      
-      # Create breaks for 12 months
-      breaks = 1:12, 
-      
-      # Change labels from numbers into month abbreviations
-      labels = c("Jan", "Feb", "Mar", "Apr", "May", "June", 
-                 "July", "Aug", "Sep", "Oct", "Nov", "Dec")) +
+  ggplot(actual_filter_function(id, date), aes(x = start_date, y = state_standard_shortage_level)) +
+    geom_col(fill = "orange3", width = 20) +
+    
+    # Format the x-axis to show month & year (e.g., "Mar 2022")
+    scale_x_date(
+      date_labels = "%b %Y",
+      date_breaks = "1 month",
+      expand = c(0.01, 0.01)) +
     
     labs(x = "Month",
          y = "Shortage Level") +
-    theme_minimal()
+    
+    
+    theme_minimal(base_size = 13) +
+    
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(face = "bold"),
+      plot.subtitle = element_text(size = 11)
+    )
   
   
 }
 
-actual_plot_function(23, c("2022-03", "2022-05"))
+actual_plot_function(23, c("2022-03", "2023-05"))
 ```
 
 #### Bar Plot of shortage

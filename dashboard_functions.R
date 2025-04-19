@@ -473,11 +473,24 @@ actual_filter_function <- function(id, date){
 }
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-##                        Monthly Water Plot Function                       ----
+##                        Actual Water Plot Function                       ----
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+actual_plot_function <- function(id, date){
+  
+  # Plot Water shortage levels for Goleta 
+  ggplot(actual_filter_function(id, date), aes(x = start_date, y = state_standard_shortage_level)) +
+    geom_col(fill = "orange3") +
+
+    labs(x = "Month",
+         y = "Shortage Level") +
+    theme_minimal()
+  
+  
+}
+
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-##                    Monthly Water NA Values Calculation                   ----
+##                    Actual Water NA Values Calculation                   ----
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 actual_values_function <- function(id, date){
@@ -490,7 +503,7 @@ actual_values_function <- function(id, date){
 }
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-##                      Monthly Water Values Calculation                    ----
+##                      Actual Water Values Calculation                    ----
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 actual_values_function <- function(id, date){
