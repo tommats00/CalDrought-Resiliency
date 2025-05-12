@@ -148,7 +148,14 @@ hist_filt_function <- function(id, date){
     filter(org_id == id) %>% 
     
     # Create new forecast year column
-    mutate(year_month = format(start_date, "%Y-%m"))  
+    mutate(year_month = format(start_date, "%Y-%m"))  %>% 
+    
+    # Capitalizing Observations in the following columns for a cleaner plot output
+    mutate(water_produced_or_delivered = fct_recode(water_produced_or_delivered,
+                                                    "Water Delivered" = "water delivered",
+                                                    "Water Produced" = "water produced"),
+           water_type = fct_relabel(water_type, ~ str_replace_all(., "_", " ") %>% 
+                                      str_to_title()))
   
   hist_total <- hist_filter %>% 
     # Group by date 
@@ -176,7 +183,7 @@ hist_filt_function <- function(id, date){
     ungroup() %>% 
     # Filter for a given year range
     filter(year_month %in% date)
-} 
+}
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

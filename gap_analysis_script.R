@@ -1,30 +1,14 @@
 library(tidyverse)
 library(testthat)
+library(lubridate)
 
-# Loading in data
-five_year_outlook <- read_csv(here::here("data", "five_year_water_shortage_outlook.csv"))
+five_year_data_check <- function(dataframe) {
 
-# Write testthat function
-test_that("All values in the benefit demand reduction column are between 0 and positive infinity",{
-  
-  column_values <- five_year_outlook$benefit_demand_reduction_acre_feet
-  
-  expect_true(
-    is.numeric(column_values) &&
-    all(is.finite(column_values)) &&
-    all(column_values >= 0),
-    info = paste("Some values are not numeric, NA, infinite or negative. Problematic values:",
-                 paste(column_values[!(is.finite(column_values) & column_values >= 0)],
-                       collapse = ", "))
-  )
-  
-  
-})
-
-test_that("{col} has all numeric values between 0 and positive infinity", {
+# Test that for numerical columns
+test_that("Not all columns have numeric values between 0 and positive infinity", {
   
   columns <- c("benefit_demand_reduction_acre_feet", "benefit_supply_augmentation_acre_feet",
-               "water_use_acre_feet", "water_supply_acre_feet")
+               "water_use_acre_feet", "water_supplies_acre_feet", "org_id", "uwmp_year")
   
   # Create a for loop to iterate for each column
   for (col in columns){
@@ -34,7 +18,7 @@ test_that("{col} has all numeric values between 0 and positive infinity", {
     # Check the column is numeric
     expect_true(
       is.numeric(column_values),
-      info = "Column is not numeric"
+      info = paste(col, "is not numeric")
     )
     
     # Identify invalid values: NA, NaN, Inf, -Inf, or < 0
@@ -45,12 +29,146 @@ test_that("{col} has all numeric values between 0 and positive infinity", {
     expect(
       total_bad == 0,
       failure_message = paste(
-        total_bad, "invalid values found.", paste(bad_rows, collapse = ", "))
+        "Column", col, "has", total_bad, "invalid values in rows:", paste(bad_rows, collapse = ", ")
+      )
     )
   }
 })
 
+# Test that checking PWSIDs are correct
+test_that("Not all Pwsids are character strings with 9 characters per part", {
+  
+  # Column name for reference
+  column <- "pwsid"
+  
+  # Access the actual column values from your data frame
+  column_values <- five_year_outlook[[column]]
+  
+  # Check that the column is of character type
+  expect_true(
+    is.character(column_values),
+    info = paste(column, "is not a character string")
+  )
+  
+  # Identify invalid values: NA, or parts that don't have exactly 9 characters
+  invalid_values <- sapply(column_values, function(x) {
+    
+    # NAs are invalid values
+    if (is.na(x)) return(TRUE)
+    
+    # For multiple PWSIDs
+    # Split the string by commas
+    parts <- strsplit(x, ",")[[1]]
+    
+    # Trim space from each part
+    parts <- trimws(parts)
+    
+    # Check if any part does NOT have exactly 9 characters
+    any(nchar(parts) != 9)
+  })
+  
+  # Sum total invalid values and identify each specific row
+  total_invalid <- sum(invalid_values, na.rm = TRUE)
+  invalid_rows <- which(invalid_values)
+  
+  # Failure message
+  expect(
+    total_invalid == 0,
+    failure_message = paste(
+      "PWSID column has", total_invalid, "invalid values in rows:", paste(invalid_rows, collapse = ", ")
+    )
+  )
+})
 
+# Multiple PWSID boolean check
+test_that("Not all is_multiple_pwsid values are true or false", {
+  
+  # Column name
+  column <- "is_multiple_pwsid"
+  
+  # Indexing column values
+  column_values <- five_year_outlook[[column]]
+  
+  # Expect values as logicals
+  expect_true(
+    is.logical(column_values),
+    info = paste(column, "is not a logical")
+  )
+  
+  # Identify invalid rows:
+  invalid_values <- !is.logical(column_values) | is.na(column_values)
+  total_invalid <- sum(invalid_values)
+  invalid_rows <- which(invalid_values)
+  
+  # Failure message
+  expect(
+    total_invalid == 0,
+    failure_message = paste(
+      "is_multiple_pwsid has", total_invalid, "invalid values in rows:", paste(invalid_rows, collapse = ", ")
+    )
+  )
+  
+})
 
+# Start and end date check
+test_that("Not all forecast_start_date and forecast_end_dates are date types", {
+  
+  # Column names
+  columns <- c("forecast_start_date", "forecast_end_date")
+  
+  # For loop interates over both columns checking date type
+  for (column in columns) {
+  
+  # Indexing column values, itereating in for loop
+  column_values <- five_year_outlook[[column]]
+  
+  # Expecting date type
+  expect_true(
+    is.Date(column_values),
+    info = paste(column, "does not contain all date values")
+  )
+  
+  # Identify missing rows
+  invalid_values <- !is.Date(column_values) | is.na(column_values)
+  total_invalid <- sum(invalid_values)
+  invalid_rows <- which(invalid_values)
+  
+  # Failure message
+  expect(
+    total_invalid == 0,
+    failure_message = paste(
+      "Column", column, "has", total_invalid, "invalid values in rows:", paste(invalid_rows, collapse = ", ")
+    ))
+  }
+})
+
+# Supplier name check
+test_that("Not all supplier_name are character strings",{
+  
+  # Column name
+  column <- "supplier_name"
+  
+  # Indexing values in supplier_name
+  column_values <- five_year_outlook[[column]]
+  
+  # Expecting values as character strings
+  expect_true(
+    is.character(column_values),
+    info = paste(column, "does not contain all character strings")
+  )
+  
+  # Identify missing rows
+  invalid_values <- !is.character(column_values) | is.na(column_values)
+  total_invalid <- sum(invalid_values)
+  invalid_rows <- which(invalid_values)
+  
+  # Failure message
+  expect(
+    total_invalid == 0,
+    failure_message = paste(
+      "supplier_name has", total_invalid, "invalid values in rows:", paste(invalid_rows, collapse = ", ")
+    ))
+})
+}
 
 

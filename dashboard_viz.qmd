@@ -13,6 +13,7 @@ editor_options:
 library(tidyverse)
 library(here)
 library(ggExtra)
+library(paletteer)
 ```
 
 ### Load data
@@ -108,16 +109,21 @@ five_year_plot <- function(id, year) {
     geom_col(position = "dodge") + # dodge lines up bars side by side
     
     # Labels
-    labs(x = "Forecast Date",
-         y = "Acre-Feet",
+    labs(x = "Forecast Year",
+         y = "Quantity (Acre-Feet)",
          fill = element_blank()) + # Get's rid of the legend
     
     # Add axis breaks
     scale_x_continuous(breaks = c(2021:2025)) +
     
     # Manually choose bar colors   
-    scale_fill_manual(values = c("coral", "steelblue", "forestgreen", "violetred")) + 
-    theme_minimal()
+    scale_fill_manual(values = c("#E69F00", "#56B4E9", "#009E73", "#D55E00" )) + 
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(size = rel(1.5), color = "black"),
+      axis.text.y = element_text(size = rel(1.5), color = "black"),
+      axis.title = element_text(size = rel(1.5))
+    )
   
   
 }
@@ -133,12 +139,17 @@ five_year_plot(13, c(2021:2025))
 # Plot based on date and acre feet
 ggplot(five_year_goleta, aes(x = forecast_start_date, y = acre_feet, fill = use_supply_aug_red)) +
   geom_col(position = "dodge") +
-  labs(x = "Forecast Date",
+  labs(x = "Forecast Year",
        y = "Acre-Feet",
        fill = element_blank()) +
   #scale_fill_discrete(labels = c("Supply", "Use", "Supply Augmentation", "Demand Reduction")) +
   scale_fill_manual(values = c("coral", "steelblue", "forestgreen", "violetred")) + 
-  theme_minimal()
+  theme_minimal() +
+  theme(
+      axis.text.x = element_text(size = rel(1.5), color = "black"),
+      axis.text.y = element_text(size = rel(1.5), color = "black"),
+      axis.title = element_text(size = rel(1.5))
+    )
 ```
 
 ### Function for NA values
@@ -259,7 +270,7 @@ This seems to be working fine. Using org_id and date as the arguments.
 ```{r}
 hist_filt_function <- function(id, date){
   
-    # If date arguemnt has 2 values, assume it's a start/end range and expand it
+  # If date arguemnt has 2 values, assume it's a start/end range and expand it
   if (length(date) == 2) {
     date <- seq(
       from = lubridate::ymd(paste0(date[1], "-01")), # converts into a Date type
@@ -278,15 +289,9 @@ hist_filt_function <- function(id, date){
     filter(org_id == id) %>% 
     
     # Create new forecast year column
-    mutate(year_month = format(start_date, "%Y-%m"))  %>% 
-    
-    # Capitalizing Observations in the following columns for a cleaner plot output
-    mutate(water_produced_or_delivered = fct_recode(water_produced_or_delivered,
-                                                  "Water Delivered" = "water delivered",
-                                                  "Water Produced" = "water produced"),
-         water_type = fct_relabel(water_type, ~ str_replace_all(., "_", " ") %>% 
-                                    str_to_title()))
-    
+    mutate(year_month = format(start_date, "%Y-%m"))  
+  
+  
   hist_total <- hist_filter %>% 
     # Group by date 
     group_by(start_date) %>% 
@@ -312,7 +317,14 @@ hist_filt_function <- function(id, date){
     ) %>% 
     ungroup() %>% 
     # Filter for a given year range
-    filter(year_month %in% date)
+    filter(year_month %in% date) %>% 
+    
+    # Capitalizing Observations in the following columns for a cleaner plot output
+    mutate(water_produced_or_delivered = fct_recode(water_produced_or_delivered,
+                                                    "Water Delivered" = "water delivered",
+                                                    "Water Produced" = "water produced"),
+           water_type = fct_relabel(water_type, ~ str_replace_all(., "_", " ") %>% 
+                                      str_to_title()))
 } 
 
 View(hist_filt_function(1068, date = c("2013-01", "2013-06")))
@@ -360,26 +372,63 @@ hist_plot_all_function(1068, "total", c("2013-01", "2013-06"))
 ### Function for all historical production data for all water types
 
 ```{r}
+# Title-cased water types
+water_types <- c(
+  "Agriculture",
+  "Single-Family Residential",
+  "Commercial/Institutional",
+  "Industrial",
+  "Landscape Irrigation",
+  "Multi-Family Residential",
+  "Other",
+  "Other Pws",
+  "Recycled",
+  "Surface Water",
+  "Sold To Another Pws",
+  "Groundwater Wells",
+  "Non-Potable (Total Excluded Recycled)",
+  "Purchased Or Received From Another Pws",
+  "Non-Potable Water Sold To Another Pws",
+  "Total"
+)
+
+palette_colors <- as.character(paletteer_d("colorBlindness::paletteMartin"))
+palette_extended <- rep(palette_colors, length.out = length(water_types))
+
+# Named color mapping
+water_colors <- setNames(palette_extended, water_types)
+
+
+
+# Your plotting function
 hist_plot_function <- function(id, type, date){
   
-  # Use filtered historical production data
-  hist_plot <- hist_filt_function(id, date ) %>% 
-    
-    # filter for water type
-    filter(water_type %in% type) %>% 
-    
-    # Plot filtered data 
-    ggplot(aes(x = start_date, y = quantity_acre_feet, color = water_type, linetype = water_produced_or_delivered)) +
-    geom_line() +
-    labs(x = "Date",
-         y = "Quantity (Acre-Feet)") +
-    theme_minimal()
+  hist_data <- hist_filt_function(id, date) %>% 
+    filter(water_type %in% type)
+  
+  hist_plot <- hist_data %>%
+    ggplot(aes(x = start_date, y = quantity_acre_feet,
+               color = water_type, linetype = water_produced_or_delivered)) +
+    geom_line(linewidth = 0.8) +
+    #scale_color_manual(values = water_colors) +
+    labs(
+      x = "Date",
+      y = "Quantity (Acre-Feet)",
+      color = "Water Type",
+      linetype = "Produced or Delivered"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(size = rel(1.5), color = "black"),
+      axis.text.y = element_text(size = rel(1.5), color = "black"),
+      axis.title = element_text(size = rel(1.5))
+    )
   
   return(hist_plot)
 }
 
 # Example function output
-hist_plot_function(1068, c("total", "Agriculture"), c("2013-01", "2013-06"))
+hist_plot_function(1068, c("Sold To Another Pws", "Total", "Agriculture", "Commercial/Institutional", "Landscape Irrigation", "Recycled"), c("2013-01", "2022-06"))
 ```
 
 ### Line plot time series for specific water type
@@ -595,12 +644,13 @@ monthly_filter <- function(id, date){
      # Create new forecast year column
     mutate(year_month = format(forecast_start_date, "%Y-%m")) %>% 
     
-    filter(year_month %in% date)
+    filter(year_month %in% date) %>% 
+    
   
   return(monthly_filter)
 }
 
-View(monthly_filter(23, c("2024-07", "2024-09")))
+View(monthly_filter(351, c("2024-07", "2025-09")))
 ```
 
 ### Function for bar plot creation
@@ -609,32 +659,46 @@ View(monthly_filter(23, c("2024-07", "2024-09")))
 monthly_plot_function <- function(id, date){
   
   monthly_plot <- monthly_filter(id, date) %>% 
-  
-  # Filter out annual reports, interested in monthly metrics
-  filter(is_annual == "FALSE") %>%
-  
-  # Pivot longer shortage surplus, benefit demand reduction and benefit supply aug columns
-  # Want information in one column for easier access when plotting
-  pivot_longer(cols = c(shortage_surplus_acre_feet, starts_with("benefit")),
-               names_to = "use_supply_aug_red",
-               values_to = "acre_feet") %>% 
-  
-  # Plot data 
-  ggplot(aes(x = forecast_start_date, y = acre_feet, fill = use_supply_aug_red)) + 
-  geom_col(position = "dodge") +
-  labs(x = "Date",
-       y = "Acre-Feet",
-       fill = element_blank()) +
-  
-  # Changing labels for graph representation 
-  scale_fill_discrete(labels = c("Demand Reduction", "Supply Augmentation", "Shortage/Surplus")) +
-  theme_minimal()
+    
+    # Filter out annual reports, interested in monthly metrics
+    filter(is_annual == "FALSE") %>%
+    
+    # Pivot longer shortage surplus, benefit demand reduction and benefit supply aug columns
+    # Want information in one column for easier access when plotting
+    pivot_longer(cols = c(shortage_surplus_acre_feet, starts_with("benefit")),
+                 names_to = "use_supply_aug_red",
+                 values_to = "acre_feet") %>%
+    
+    # Plot data 
+    ggplot(aes(x = forecast_start_date, y = acre_feet, fill = use_supply_aug_red)) + 
+    geom_col(position = "stack") +
+    
+    # Format the x-axis to show month & year (e.g., "Mar 2022")
+    scale_x_date(
+      date_labels = "%b %Y",
+      date_breaks = "1 month",
+      expand = c(0.01, 0.01)) +
+    labs(x = "Date",
+         y = "Acre-Feet",
+         fill = element_blank()) +
+    
+    # Changing labels for graph representation 
+    scale_fill_manual(labels = c("Demand Reduction", "Supply Augmentation", "Shortage/Surplus"),
+                      values = c("#D55E00", "#009E73", "#56B4E9")) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(size = rel(1.2), color = "black", angle = 45, hjust = 1),
+      axis.text.y = element_text(size = rel(1.5), color = "black"),
+      axis.title = element_text(size = rel(1.5)),
+      legend.text = element_text(size = rel(1)),
+      
+    )
   
   return(monthly_plot)
   
 }
 
-monthly_plot_function(23, c("2024-07", "2024-09"))
+monthly_plot_function(30, c("2024-07", "2025-09"))
 ```
 
 ### Bar plot for shortage percentage
@@ -731,7 +795,7 @@ monthly_values_function <- function(id, date){
   return(monthly_values)
 }
 
-monthly_values_function(23, c("2024-07", "2024-09"))
+monthly_values_function(30, c("2024-07", "2024-09"))
 
 ```
 
@@ -867,6 +931,10 @@ actual_plot_function <- function(id, date){
       date_breaks = "1 month",
       expand = c(0.01, 0.01)) +
     
+    scale_y_continuous(
+      breaks = c(1,2,3,4,5,6)
+    ) +
+    
     labs(x = "Month",
          y = "Shortage Level") +
     
@@ -874,9 +942,10 @@ actual_plot_function <- function(id, date){
     theme_minimal(base_size = 13) +
     
     theme(
-      axis.text.x = element_text(angle = 45, hjust = 1),
-      plot.title = element_text(face = "bold"),
-      plot.subtitle = element_text(size = 11)
+      axis.text.x = element_text(size = rel(1.2), color = "black", angle = 45, hjust = 1),
+      axis.text.y = element_text(size = rel(1.5), color = "black"),
+      axis.title = element_text(size = rel(1.5)),
+      legend.text = element_text(size = rel(1))
     )
   
   
